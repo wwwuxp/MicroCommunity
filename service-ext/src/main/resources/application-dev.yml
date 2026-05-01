@@ -1,4 +1,5 @@
 # 开发环境配置
+
 spring:
   datasource:
     url: jdbc:mysql://dev.db.java110.com:3306/tt?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
