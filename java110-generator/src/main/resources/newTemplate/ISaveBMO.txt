@@ -1,0 +1,16 @@
+package com.hezong.pubcar.bmo.@@templateCode@@;
+
+import org.springframework.http.ResponseEntity;
+
+public interface ISave@@TemplateCode@@BMO {
+
+    /**
+     * 添加@@templateName@@
+     * add by hh
+     * @param @@templateCode@@Po
+     * @return
+     */
+    ResponseEntity<String> save(@@TemplateCode@@Po @@templateCode@@Po);
+
+
+}

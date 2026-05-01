@@ -1,0 +1,15 @@
+package com.hezong.pubcar.bmo.@@templateCode@@;
+
+import org.springframework.http.ResponseEntity;
+
+public interface IUpdate@@TemplateCode@@BMO {
+
+    /**
+     * 修改@@templateName@@
+     * add by hh
+     * @param @@templateCode@@Po
+     * @return
+     */
+    ResponseEntity<String> update(@@TemplateCode@@Po @@templateCode@@Po);
+
+}

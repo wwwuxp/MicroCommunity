@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubCarAlarmServiceDaoImpl">
+
+    <!-- 批量保存用车报警信息 -->
+    <insert id="savePubCarAlarmBatch" parameterType="java.util.List">
+        INSERT INTO pubcar_alarm(alarm_id,name,grade,trip_id,detail,b_id,status_cd,community_id)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.alarmId},#{item.name},#{item.grade},#{item.tripId},#{item.detail},#{item.bId},#{item.statusCd},#{item.communityId})
+        </foreach>
+    </insert>
+
+    <!-- 查询异常报警实例表信息(撤单用到) -->
+    <select id="getPubCarAlarmInstanceInfo" parameterType="map" resultType="map">
+        SELECT alarm_id alarmId, `name`, grade, driver_id driverId, trip_id tripId, detail, result_process resultProcess,
+               remark, b_id bId, community_id communityId
+        FROM pubcar_alarm
+        WHERE b_id = #{bId} and status_cd = #{statusCd}
+    </select>
+
+    <!-- 查询异常报警业务表信息 -->
+    <select id="getBusinessPubCarAlarmInfo" parameterType="map" resultType="map">
+        select b_id bId, alarm_id alarmId, name, grade, driver_id driverId, driver_name driverName, trip_id tripId, detail, result_process resultProcess, remark, community_id communityId
+        from business_pubcar_alarm
+        where b_id = #{bId} and operate = #{operate}
+    </select>
+
+    <!-- 保存异常报警业务表信息 -->
+    <insert id="saveBusinessPubCarAlarmInfo" parameterType="map">
+        insert into business_pubcar_alarm (b_id, alarm_id, name, grade, driver_id, driver_name, trip_id, detail, result_process, remark, operate, community_id)
+        values (#{bId}, #{alarmId}, #{name}, #{grade}, #{driverId}, #{driverName}, #{tripId}, #{detail}, #{resultProcess}, #{remark}, #{operate}, #{communityId});
+    </insert>
+    
+    <!-- 保存异常报警信息表信息 add by hh -->
+    <insert id="savePubCarAlarmInfo" parameterType="Map">
+        insert into pubcar_alarm(alarm_id, name, grade, driver_id, driver_name, trip_id, detail, b_id, status_cd, community_id)
+        select alarm_id, name, grade, driver_id, driver_name, trip_id, detail, b_id, '0', community_id
+        from business_pubcar_alarm
+        where b_id = #{bId} and operate = #{operate}
+    </insert>
+
+    <!-- 查询异常报警信息表信息 add by hh
+    (a.driver_id driverId,t.`start`, t.destination,t.start_time applyStartTime, t.end_time applyEndTime, m.start_time actualStartTime, m.end_time actualEndTime,)
+    LEFT JOIN pubcar_trip_mileage m ON m.trip_id = a.trip_id AND m.driver_id = a.driver_id AND m.status_cd = '0'
+    -->
+    <select id="getPubCarAlarmInfo" parameterType="com.java110.dto.pubCarAlarm.PubCarAlarmDto" resultType="com.java110.vo.api.pubCarAlarm.ApiPubCarAlarmDataVo">
+        SELECT a.alarm_id alarmId, a.create_time alarmTime, a.`name`, a.grade, uu.`name` applicant,
+               o.org_name department, td.name position, uu.tel, a.remark, a.detail, a.result_process resultProcess
+        FROM pubcar_alarm a
+        LEFT JOIN pubcar_trip t ON t.trip_id = a.trip_id AND t.status_cd = '0'
+        LEFT JOIN u_user uu ON uu.user_id = t.user_id AND uu.status_cd = '0'
+        LEFT JOIN u_org_staff_rel uosr ON uosr.staff_id = uu.user_id AND uosr.status_cd = '0'
+        LEFT JOIN t_dict td ON td.status_cd = uosr.rel_cd AND td.table_name = 'u_org_staff_rel' AND td.table_columns = 'rel_cd'
+        LEFT JOIN u_org o ON o.org_id = uosr.org_id AND o.status_cd = '0'
+        WHERE a.status_cd = '0'
+        <if test="grade !=null">
+            and a.grade= #{grade}
+        </if>
+        <if test="isHandle == 1">
+            and a.result_process is not null
+        </if>
+        <if test="isHandle == 0">
+            and a.result_process is null
+        </if>
+        <if test="resultProcess !=null">
+            and a.result_process= #{resultProcess}
+        </if>
+        <if test="lessAlarmTime !=null">
+            <![CDATA[ and a.create_time >= #{lessAlarmTime}]]>
+        </if>
+        <if test="moreAlarmTime !=null">
+            <![CDATA[ and a.create_time <= #{moreAlarmTime}]]>
+        </if>
+        <if test="alarmId !=null and alarmId != ''">
+            and a.alarm_id= #{alarmId}
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            and (a.community_id= #{communityId} or a.community_id='-1')
+        </if>
+        order by a.create_time desc
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 修改异常报警信息表信息 add by hh -->
+    <update id="updatePubCarAlarmInfo" parameterType="Map">
+        update pubcar_alarm t set t.status_cd = #{statusCd}
+        <if test="newBId != null and newBId != ''">
+            ,t.b_id = #{newBId}
+        </if>
+        <if test="remark !=null and remark != ''">
+            , t.remark= #{remark}
+        </if>
+        <if test="resultProcess !=null and resultProcess != ''">
+            , t.result_process= #{resultProcess}
+        </if>
+        <where>
+            <if test="alarmId !=null and alarmId != ''">
+                t.alarm_id= #{alarmId}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+        </where>
+    </update>
+
+    <!-- 查询异常报警信息表数量 add by hh -->
+    <select id="queryPubCarAlarmsCount" parameterType="com.java110.dto.pubCarAlarm.PubCarAlarmDto" resultType="Map">
+        select count(1) count
+        from pubcar_alarm t
+        where t.status_cd= '0'
+        <if test="grade !=null">
+            and t.grade= #{grade}
+        </if>
+        <if test="isHandle == 1">
+            and t.result_process is not null
+        </if>
+        <if test="isHandle == 0">
+            and t.result_process is null
+        </if>
+        <if test="resultProcess !=null">
+            and t.result_process= #{resultProcess}
+        </if>
+        <if test="lessAlarmTime !=null">
+            <![CDATA[ and t.create_time >= #{lessAlarmTime}]]>
+        </if>
+        <if test="moreAlarmTime !=null">
+            <![CDATA[ and t.create_time <= #{moreAlarmTime}]]>
+        </if>
+        <if test="alarmId !=null and alarmId != ''">
+            and t.alarm_id= #{alarmId}
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            and (t.community_id= #{communityId} or t.community_id='-1')
+        </if>
+    </select>
+
+</mapper>

@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubCarTripMileageServiceDaoImpl">
+
+    <!-- 更新里程及费用信息 -->
+    <update id="updateTripMileageAndFee" parameterType="com.java110.dto.pubCarTripMileage.PubCarTripMileageDto">
+        UPDATE pubcar_trip_mileage
+        <set>
+            <if test="startMileage != null">
+                start_mileage = #{startMileage}
+            </if>
+            <if test="endMileage != null">
+                ,end_mileage = #{endMileage}
+            </if>
+            <if test="passMileage != null">
+                ,pass_mileage = #{passMileage}
+            </if>
+            <if test="runRange != null and runRange!= ''">
+                ,run_range = #{runRange}
+            </if>
+            <if test="repairFee != null and repairFee!= ''">
+                ,repair_fee = #{repairFee}
+            </if>
+            <if test="oilFee != null and oilFee!= ''">
+                ,oil_fee = #{oilFee}
+            </if>
+            <if test="parkingFee != null and parkingFee!= ''">
+                ,parking_fee = #{parkingFee}
+            </if>
+            <if test="roadBridgeFee != null and roadBridgeFee!= ''">
+                ,road_bridge_fee = #{roadBridgeFee}
+            </if>
+        </set>
+        WHERE community_id = #{communityId} AND trip_id = #{tripId} AND driver_id = #{driverId}
+    </update>
+
+    <!-- 查询行程里程登记信息 -->
+    <select id="getTripMileageAndFee" parameterType="com.java110.dto.pubCarTripMileage.PubCarTripMileageDto" resultType="com.java110.vo.api.pubCarTripMileage.ApiTripMileageAndFeeDataVo">
+        SELECT start_mileage startMileage, end_mileage endMileage, run_range runRange, repair_fee repairFee,
+               oil_fee oilFee, parking_fee parkingFee, road_bridge_fee roadBridgeFee
+        FROM pubcar_trip_mileage
+        WHERE community_id = #{communityId} AND trip_id = #{tripId} AND driver_id = #{driverId} AND status_cd = '0'
+    </select>
+
+    <!-- 查询上一部车的结束里程 -->
+    <select id="queryEndMileageOfPreviousCar" parameterType="map" resultType="java.lang.Double">
+        SELECT ptm.end_mileage endMileage
+        FROM pubcar_trip_mileage ptm
+        LEFT JOIN pubcar_trip_car_num ptcn ON ptcn.trip_id = ptm.trip_id AND ptcn.driver_id = ptm.driver_id AND ptcn.status_cd = '0'
+        WHERE ptcn.car_id = #{carId} AND ptm.community_id = #{communityId}
+        ORDER BY ptm.create_time DESC
+        LIMIT 1;
+    </select>
+
+    <!-- 查询当前司机的行程是否在进行中 -->
+    <select id="queryDriverTripIsInProgress" parameterType="com.java110.dto.pubCarTripMileage.PubCarTripMileageDto" resultType="map">
+        SELECT COUNT(1) count
+        FROM pubcar_trip_mileage
+        WHERE status_cd = '0'
+        AND community_id = #{communityId}
+        AND trip_id = #{tripId}
+        AND driver_id = #{driverId}
+        AND (end_mileage IS NULL OR end_time IS NULL)
+    </select>
+
+    <!-- 获取行驶里程业务表信息 -->
+    <select id="getBusinessPubCarTripMileageInfo" parameterType="map" resultType="map">
+        select b_id bId, mileage_id mileageId, start_mileage startMileage, end_mileage endMileage, pass_mileage passMileage,start_time startTime, end_time endTime,duration, car_condition carCondition,
+               exception_desc exceptionDesc, car_condition_img carConditionImg, delay_time delayTime, delay_reason delayReason, trip_id tripId, driver_id driverId, operate, community_id communityId,
+               run_range runRange, repair_fee repairFee, oil_fee oilFee, parking_fee parkingFee, road_bridge_fee roadBridgeFee
+        from business_pubcar_trip_mileage
+        <where>
+            <if test="bId !=null and bId != ''">
+                b_id= #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and operate= #{operate}
+            </if>
+            <if test="communityId !=null and communityId != ''">
+                and community_id= #{communityId}
+            </if>
+        </where>
+    </select>
+
+    <!-- 保存行驶里程业务表信息 add by hh -->
+    <insert id="saveBusinessPubCarTripMileageInfo" parameterType="Map">
+        insert into business_pubcar_trip_mileage(b_id, mileage_id, start_mileage, end_mileage, pass_mileage, start_time,end_time, duration, car_condition,
+                                                 exception_desc,car_condition_img, delay_time, delay_reason, trip_id, driver_id, operate, community_id,
+                                                 run_range, repair_fee, oil_fee, parking_fee, road_bridge_fee)
+        values (#{bId}, #{mileageId}, #{startMileage}, #{endMileage}, #{passMileage}, #{startTime},#{endTime}, #{duration}, #{carCondition},
+                #{exceptionDesc}, #{carConditionImg}, #{delayTime}, #{delayReason}, #{tripId}, #{driverId}, #{operate}, #{communityId},
+                #{runRange}, #{repairFee}, #{oilFee}, #{parkingFee}, #{roadBridgeFee})
+    </insert>
+
+    <!-- 查询司机的开始里程是否已经存在 -->
+    <select id="queryDriverTrip" resultType="com.java110.dto.pubCarTripMileage.PubCarTripMileageDto" parameterType="com.java110.dto.pubCarTripMileage.PubCarTripMileageDto">
+        select m.mileage_id mileageId, m.start_mileage startMileage, m.end_mileage endMileage, m.start_time startTime, m.end_time endTime, m.trip_id tripId, m.driver_id driverId, m.community_id communityId,
+               t.start_time applyStartTime, t.end_time applyEndTime, t.mileage applyMileage
+        from pubcar_trip_mileage m
+        left join pubcar_trip t on t.trip_id = m.trip_id
+        where m.status_cd= '0' and t.status_cd = '0'
+        <if test="tripId !=null and tripId != ''">
+            and m.trip_id= #{tripId}
+        </if>
+        <if test="driverId !=null and driverId != ''">
+            and m.driver_id= #{driverId}
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            and m.community_id= #{communityId}
+        </if>
+    </select>
+
+    <!-- 保存行驶里程信息表信息 add by hh -->
+    <insert id="savePubCarTripMileageInfo" parameterType="Map">
+        insert into pubcar_trip_mileage(mileage_id, start_mileage, start_time, car_condition, exception_desc, car_condition_img, trip_id, driver_id, b_id, status_cd, community_id)
+        select mileage_id, start_mileage, start_time, car_condition, exception_desc, car_condition_img, trip_id, driver_id, b_id, '0', community_id
+        from business_pubcar_trip_mileage
+        <where>
+            <if test="bId !=null and bId != ''">
+                b_id= #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and operate= #{operate}
+            </if>
+        </where>
+    </insert>
+
+    <!-- 保存行驶里程信息表信息V2 add by hs -->
+    <insert id="savePubCarTripMileageInfoV2" parameterType="Map">
+        insert into pubcar_trip_mileage(`mileage_id`, `start_mileage`, `end_mileage`, `pass_mileage`, `start_time`, `end_time`, `duration`, `car_condition`, `run_range`, `repair_fee`, `oil_fee`, `parking_fee`, `road_bridge_fee`, `exception_desc`, `car_condition_img`, `delay_time`, `delay_reason`, `trip_id`, `driver_id`, `b_id`, `status_cd`, `community_id`)
+        select `mileage_id`, `start_mileage`, `end_mileage`, `pass_mileage`, `start_time`, `end_time`, `duration`, `car_condition`, `run_range`, `repair_fee`, `oil_fee`, `parking_fee`, `road_bridge_fee`, `exception_desc`, `car_condition_img`, `delay_time`, `delay_reason`, `trip_id`, `driver_id`, `b_id`, 0, `community_id`
+        from business_pubcar_trip_mileage
+        <where>
+            <if test="bId !=null and bId != ''">
+                b_id= #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and operate= #{operate}
+            </if>
+        </where>
+    </insert>
+
+    <!-- 查询行驶里程信息表信息 add by hh -->
+    <select id="getPubCarTripMileageInfo" parameterType="Map" resultType="Map">
+        select t.duration,t.mileage_id,t.mileage_id mileageId,t.create_time,t.create_time
+        createTime,t.start_mileage,t.start_mileage startMileage,t.trip_id,t.trip_id tripId,t.status_cd,t.status_cd
+        statusCd,t.end_mileage,t.end_mileage endMileage,t.b_id,t.b_id bId,t.community_id,t.community_id communityId
+        from pubcar_trip_mileage t
+        <where>
+            <if test="duration !=null and duration != ''">
+                t.duration= #{duration}
+            </if>
+            <if test="mileageId !=null and mileageId != ''">
+                and t.mileage_id= #{mileageId}
+            </if>
+            <if test="createTime !=null and createTime != ''">
+                and t.create_time= #{createTime}
+            </if>
+            <if test="startMileage !=null and startMileage != ''">
+                and t.start_mileage= #{startMileage}
+            </if>
+            <if test="tripId !=null and tripId != ''">
+                and t.trip_id= #{tripId}
+            </if>
+            <if test="statusCd !=null and statusCd != ''">
+                and t.status_cd= #{statusCd}
+            </if>
+            <if test="endMileage !=null and endMileage != ''">
+                and t.end_mileage= #{endMileage}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+            <if test="communityId !=null and communityId != ''">
+                and t.community_id= #{communityId}
+            </if>
+            order by t.create_time desc
+            <if test="page != -1 and page != null ">
+                limit #{page}, #{row}
+            </if>
+        </where>
+
+    </select>
+
+    <!-- 修改行驶里程信息表信息 add by hh -->
+    <update id="updatePubCarTripMileageInfo" parameterType="Map">
+        update pubcar_trip_mileage t
+        <set>
+            t.status_cd = #{statusCd}
+            <if test="newBId != null and newBId != ''">
+                ,t.b_id = #{newBId}
+            </if>
+            <if test="endMileage !=null">
+                , t.end_mileage= #{endMileage}
+            </if>
+            <if test="passMileage !=null">
+                , t.pass_mileage= #{passMileage}
+            </if>
+            <if test="endTime !=null">
+                , t.end_time= #{endTime}
+            </if>
+            <if test="duration !=null">
+                , t.duration= #{duration}
+            </if>
+            <if test="delayTime !=null">
+                , t.delay_time= #{delayTime}
+            </if>
+            <if test="delayReason !=null and delayReason !=''">
+                , t.delay_reason= #{delayReason}
+            </if>
+            <if test="runRange !=null and runRange !=''">
+                , t.run_range= #{runRange}
+            </if>
+            <if test="repairFee !=null and repairFee !=''">
+                , t.repair_fee= #{repairFee}
+            </if>
+            <if test="oilFee !=null and oilFee !=''">
+                , t.oil_fee= #{oilFee}
+            </if>
+            <if test="parkingFee !=null and parkingFee !=''">
+                , t.parking_fee= #{parkingFee}
+            </if>
+            <if test="roadBridgeFee !=null and roadBridgeFee !=''">
+                , t.road_bridge_fee= #{roadBridgeFee}
+            </if>
+        </set>
+        <where>
+            <if test="mileageId !=null and mileageId != ''">
+                t.mileage_id= #{mileageId}
+            </if>
+            <if test="tripId !=null and tripId != ''">
+                and t.trip_id= #{tripId}
+            </if>
+            <if test="driverId !=null and driverId != ''">
+                and t.driver_id= #{driverId}
+            </if>
+            <if test="communityId !=null and communityId != ''">
+                and t.community_id= #{communityId}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+        </where>
+    </update>
+
+    <!-- 查询行驶里程信息表数量 add by hh -->
+    <select id="queryPubCarTripMileagesCount" parameterType="Map" resultType="Map">
+        select count(1) count
+        from pubcar_trip_mileage t
+        <where>
+            <if test="duration !=null and duration != ''">
+                t.duration= #{duration}
+            </if>
+            <if test="mileageId !=null and mileageId != ''">
+                and t.mileage_id= #{mileageId}
+            </if>
+            <if test="createTime !=null and createTime != ''">
+                and t.create_time= #{createTime}
+            </if>
+            <if test="startMileage !=null and startMileage != ''">
+                and t.start_mileage= #{startMileage}
+            </if>
+            <if test="tripId !=null and tripId != ''">
+                and t.trip_id= #{tripId}
+            </if>
+            <if test="statusCd !=null and statusCd != ''">
+                and t.status_cd= #{statusCd}
+            </if>
+            <if test="endMileage !=null and endMileage != ''">
+                and t.end_mileage= #{endMileage}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+            <if test="communityId !=null and communityId != ''">
+                and t.community_id= #{communityId}
+            </if>
+        </where>
+    </select>
+
+</mapper>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubCarAttrServiceDaoImpl">
+
+    <!-- 保存business_pubcar_car_attr信息 add by hh -->
+    <insert id="saveBusinessPubCarAttrInfo" parameterType="Map">
+        insert into business_pubcar_car_attr(attr_id, register_date, engine_num, frame_num, accident_situation, group_id, b_id, operate)
+        values (#{attrId}, #{registerDate}, #{engineNum}, #{frameNum}, #{accidentSituation}, #{groupId}, #{attrBId}, #{operate})
+    </insert>
+
+    <!-- 保存pubcar_car_attr信息 add by hh -->
+    <insert id="savePubCarAttrInfo" parameterType="Map">
+        insert into pubcar_car_attr(attr_id, register_date, engine_num, frame_num, accident_situation, group_id, b_id)
+        select t.attr_id,t.register_date,t.engine_num,t.frame_num,t.accident_situation,t.group_id,t.b_id
+        from business_pubcar_car_attr t
+        where t.operate= 'ADD'
+        <if test="attrBId !=null and attrBId != ''">
+            and t.b_id= #{attrBId}
+        </if>
+    </insert>
+
+    <!-- 修改车辆管理表信息 add by hh -->
+    <update id="updatePubCarAttrInfo" parameterType="Map">
+        update pubcar_car_attr t set t.b_id = #{newAttrBId}
+        <if test="registerDate !=null">
+            , t.register_date= #{registerDate}
+        </if>
+        <if test="engineNum !=null and engineNum != ''">
+            , t.engine_num= #{engineNum}
+        </if>
+        <if test="frameNum !=null and frameNum != ''">
+            , t.frame_num= #{frameNum}
+        </if>
+        <if test="accidentSituation !=null and accidentSituation != ''">
+            , t.accident_situation= #{accidentSituation}
+        </if>
+        <if test="groupId !=null and groupId != ''">
+            , t.group_id= #{groupId}
+        </if>
+        <where>
+            <if test="attrId !=null and attrId != ''">
+                t.attr_id= #{attrId}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+        </where>
+    </update>
+
+</mapper>

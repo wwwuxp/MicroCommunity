@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="deviceAlarmServiceDaoImpl">
+
+    <!-- 确认设备告警 -->
+    <update id="confirmDeviceAlarm" parameterType="com.java110.dto.deviceAlarm.DeviceAlarmDto">
+        UPDATE alarm
+        SET handle_state = #{handleState}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 查询设备告警数量 -->
+    <select id="queryDeviceAlarmsCount" parameterType="com.java110.dto.deviceAlarm.DeviceAlarmDto" resultType="int">
+        SELECT COUNT(*) count
+        FROM alarm
+        WHERE `status` = 'ACTIVE_UNACK'
+        <if test="handleState != null">
+          AND handle_state = #{handleState}
+        </if>
+    </select>
+
+    <!-- 查询设备告警列表 -->
+    <select id="queryDeviceAlarms" parameterType="com.java110.dto.deviceAlarm.DeviceAlarmDto" resultType="com.java110.vo.api.deviceAlarm.ApiDeviceAlarmDataVo">
+        SELECT id, created_time `time`, category `type`, additional_info additionalInfo, severity level, `type` name, handle_state handleState
+        FROM alarm
+        WHERE `status` = 'ACTIVE_UNACK'
+        <if test="handleState != null">
+            AND handle_state = #{handleState}
+        </if>
+        ORDER BY created_time DESC, id
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 根据id查询设备列表 -->
+    <select id="queryDeviceInfoByIds" parameterType="java.util.List" resultType="map">
+        SELECT id, `name`
+        FROM device
+        WHERE id IN
+        <foreach collection="collection" separator="," item="item" open="(" close=")">
+            #{item}
+        </foreach>
+    </select>
+
+</mapper>

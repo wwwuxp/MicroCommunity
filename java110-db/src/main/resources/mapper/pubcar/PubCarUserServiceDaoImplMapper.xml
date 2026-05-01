@@ -1,0 +1,421 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubCarUserServiceDaoImpl">
+
+    <!-- 获取用户姓名 -->
+    <select id="getUserNameByUserIds" parameterType="java.util.Set" resultType="map">
+        SELECT user_id userId, `name`
+        FROM u_user
+        WHERE status_cd = '0' AND user_id IN
+        <foreach collection="collection" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </select>
+
+    <!-- 根据id批量获取姓名，部门，职位信息 -->
+    <select id="getNameDepartmentPositionInfoBatch" parameterType="java.util.List" resultType="com.java110.dto.user.UserSimpleDto">
+        SELECT uu.user_id userId, uu.`name`, uo.org_name department, td.`name` position
+        FROM u_user uu
+        LEFT JOIN u_org_staff_rel uosr ON uosr.staff_id = uu.user_id AND uosr.status_cd = '0'
+        LEFT JOIN u_org uo ON uo.org_id = uosr.org_id AND uo.status_cd = '0'
+        LEFT JOIN t_dict td ON td.status_cd = uosr.rel_cd
+        AND td.table_name = 'u_org_staff_rel' AND td.table_columns = 'rel_cd'
+        WHERE uu.user_id IN
+        <foreach collection="list" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </select>
+
+    <!-- 查询用车人或自驾人是否已经存在 -->
+    <select id="listExistPubCarUser" parameterType="com.java110.dto.pubCarUser.PubCarExistUserDto" resultType="string">
+        SELECT user_id userId
+        FROM pubcar_car_user
+        WHERE community_id = #{communityId} AND status_cd = '0' AND is_self_driving = #{isSelfDriving}
+        <if test="userIds != null and userIds.size() > 0">
+            AND user_id IN
+            <foreach collection="userIds" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="userId !=null and userId != ''">
+            AND user_id = #{userId}
+        </if>
+        <if test="carUserId !=null and carUserId != ''">
+            <![CDATA[AND car_user_id <> #{carUserId}]]>
+        </if>
+    </select>
+
+    <!--
+     查询部门名字
+     说明：部门表为项目原有表，为不入侵项目原有代码，将查询部门名称接口写入到用车人表(pubcar_car_user)所在类文件、xml文件中。
+     -->
+    <select id="queryDepartmentNames" parameterType="string" resultType="com.java110.vo.api.pubCarUser.ApiDepartmentNamesDataVo">
+        SELECT org_id departmentId, org_name departmentName
+        FROM u_org
+        WHERE store_id = #{storeId} AND org_level = '3' AND status_cd = '0'
+    </select>
+
+    <!-- 获取自驾人选择列表 -->
+    <select id="getPubCarSelfDrivingUserDetails" parameterType="com.java110.dto.pubCarUser.PubCarUserDto" resultType="com.java110.vo.api.pubCarUser.ApiPubCarUserDetailDataVo">
+        SELECT  pcu.user_id userId, uu.`name`, uu.sex gender, uu.job_num jobNum, uo.org_name department, d.`name` position, uu.tel
+        FROM pubcar_car_user pcu
+        LEFT JOIN u_user uu ON uu.user_id = pcu.user_id
+        LEFT JOIN u_org_staff_rel r ON r.staff_id = uu.user_id
+        LEFT JOIN u_org uo ON uo.org_id = r.org_id
+        LEFT JOIN t_dict d ON d.status_cd = r.rel_cd
+        WHERE d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd' AND pcu.status_cd = '0' AND uu.level_cd = '01'
+        AND pcu.is_self_driving = '0'
+        AND pcu.user_id NOT IN (
+            SELECT t.user_id
+            FROM pubcar_car_user t
+            WHERE t.is_self_driving = '1' AND t.status_cd = '0'
+        )
+        <if test="name !=null and name != ''">
+            and uu.name like concat('%',#{name},'%')
+        </if>
+        <if test="gender !=null">
+            and uu.sex = #{gender}
+        </if>
+        <if test="department !=null and department != ''">
+            and uo.org_name like concat('%',#{department},'%')
+        </if>
+        <if test="position !=null and position != ''">
+            and d.name like concat('%',#{position},'%')
+        </if>
+        <if test="jobNum !=null and jobNum != ''">
+            and uu.job_num like concat('%',#{jobNum},'%')
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            and pcu.community_id = #{communityId}
+        </if>
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 获取自驾人选择列表数量 -->
+    <select id="queryPubCarSelfDrivingUserDetailsCount" parameterType="com.java110.dto.pubCarUser.PubCarUserDto" resultType="map">
+        SELECT count(distinct pcu.car_user_id) count
+        FROM pubcar_car_user pcu
+        LEFT JOIN u_user uu ON uu.user_id = pcu.user_id
+        LEFT JOIN u_org_staff_rel r ON r.staff_id = uu.user_id
+        LEFT JOIN u_org uo ON uo.org_id = r.org_id
+        LEFT JOIN t_dict d ON d.status_cd = r.rel_cd
+        WHERE d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd' AND pcu.status_cd = '0' AND uu.level_cd = '01'
+        AND pcu.is_self_driving = '0'
+        AND pcu.user_id NOT IN (
+            SELECT t.user_id
+            FROM pubcar_car_user t
+            WHERE t.is_self_driving = '1' AND t.status_cd = '0'
+        )
+        <if test="name !=null and name != ''">
+            and uu.name like concat('%',#{name},'%')
+        </if>
+        <if test="gender !=null">
+            and uu.sex = #{gender}
+        </if>
+        <if test="department !=null and department != ''">
+            and uo.org_name like concat('%',#{department},'%')
+        </if>
+        <if test="position !=null and position != ''">
+            and d.name like concat('%',#{position},'%')
+        </if>
+        <if test="jobNum !=null and jobNum != ''">
+            and uu.job_num like concat('%',#{jobNum},'%')
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            and pcu.community_id = #{communityId}
+        </if>
+    </select>
+
+    <select id="queryDepartmentStatistics" parameterType="com.java110.dto.pubCarUser.DepartmentStatisticsDto" resultType="com.java110.vo.api.pubCarUser.ApiDepartmentStatisticsDataVo">
+        SELECT uo.org_id departmentId, uo.org_name department,
+               (CASE WHEN SUM(trm.avgTripMileage) IS NULL THEN 0 ELSE SUM(trm.avgTripMileage) END) mileage,
+               (CASE WHEN ROUND(SUM(trm.duration)) IS NULL THEN 0 ELSE CAST(SUM(trm.duration) AS UNSIGNED) END) duration,
+               COUNT(DISTINCT trm.trip_id) tripNum
+        FROM u_org uo
+        LEFT JOIN u_org_staff_rel uosr ON uosr.org_id = uo.org_id
+        LEFT JOIN pubcar_trip pt ON pt.user_id = uosr.staff_id
+        LEFT JOIN (
+            SELECT trip_id, AVG(pass_mileage) avgTripMileage, AVG(duration) duration
+            FROM pubcar_trip_mileage
+            /*pass_mileage IS NOT NULL 表明该行程结束，而非进行中*/
+            WHERE status_cd = '0' AND pass_mileage IS NOT NULL
+            /*下面的startTime和endTime是数据看板中需要的参数*/
+            <if test="startTime !=null">
+                <![CDATA[ and start_time >= #{startTime}]]>
+            </if>
+            <if test="endTime !=null">
+                <![CDATA[ and end_time <= #{endTime}]]>
+            </if>
+            GROUP BY trip_id
+        ) trm ON trm.trip_id = pt.trip_id
+        WHERE uo.store_id = #{storeId} AND uo.org_level = 3 AND uo.status_cd = '0'
+        <if test="department !=null and department != ''">
+            and uo.org_name like concat('%',#{department},'%')
+        </if>
+        <if test="lessStartTime !=null">
+            <![CDATA[ and pt.start_time >= #{lessStartTime}]]>
+        </if>
+        <if test="moreStartTime !=null">
+            <![CDATA[ and pt.start_time <= #{moreStartTime}]]>
+        </if>
+        <if test="lessEndTime !=null">
+            <![CDATA[ and pt.end_time >= #{lessEndTime}]]>
+        </if>
+        <if test="moreEndTime !=null">
+            <![CDATA[ and pt.end_time <= #{moreEndTime}]]>
+        </if>
+        GROUP BY uo.org_id
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 查询部门用车统计数量 -->
+    <select id="queryDepartmentStatisticsCount" parameterType="com.java110.dto.pubCarUser.DepartmentStatisticsDto" resultType="Map">
+        SELECT count(DISTINCT uo.org_id) count
+        FROM u_org uo
+        LEFT JOIN u_org_staff_rel uosr ON uosr.org_id = uo.org_id
+        LEFT JOIN pubcar_trip pt ON pt.user_id = uosr.staff_id
+        LEFT JOIN pubcar_trip_mileage trm ON trm.trip_id = pt.trip_id
+        WHERE uo.store_id = #{storeId} AND uo.org_level = 3
+        <if test="department !=null and department != ''">
+            and uo.org_name like concat('%',#{department},'%')
+        </if>
+        <if test="lessStartTime !=null">
+            <![CDATA[ and pt.start_time >= #{lessStartTime}]]>
+        </if>
+        <if test="moreStartTime !=null">
+            <![CDATA[ and pt.start_time <= #{moreStartTime}]]>
+        </if>
+        <if test="lessEndTime !=null">
+            <![CDATA[ and pt.end_time >= #{lessEndTime}]]>
+        </if>
+        <if test="moreEndTime !=null">
+            <![CDATA[ and pt.end_time <= #{moreEndTime}]]>
+        </if>
+    </select>
+
+    <sql id="commonSql">
+        FROM  pubcar_car_user pcu
+        LEFT JOIN u_user uu ON  pcu.user_id = uu.user_id
+        LEFT JOIN u_org_staff_rel uosr ON uu.user_id = uosr.staff_id
+        LEFT JOIN u_org uo ON uosr.org_id = uo.org_id
+        LEFT JOIN t_dict d ON d.status_cd = uosr.rel_cd
+        WHERE uu.status_cd = '0'
+        AND uo.status_cd = '0'
+        AND uosr.status_cd = '0'
+        AND pcu.status_cd = '0'
+        AND d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd'
+        and pcu.is_self_driving = #{isSelfDriving}
+        <if test="storeId !=null and storeId != ''">
+            and uosr.store_id = #{storeId}
+        </if>
+        <if test="tel !=null and tel != ''">
+            and uu.tel like concat('%',#{tel},'%')
+        </if>
+        <if test="name !=null and name != ''">
+            and uu.name like concat('%',#{name},'%')
+        </if>
+        <if test="department !=null and department != ''">
+            and uo.org_name like concat('%',#{department},'%')
+        </if>
+        <if test="position !=null and position != ''">
+            and d.name like concat('%',#{position},'%')
+        </if>
+        <if test="jobNum !=null and jobNum != ''">
+            and uu.job_num like concat('%',#{jobNum},'%')
+        </if>
+        order by pcu.create_time desc
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </sql>
+    <!-- 查询用车人列表 add by hh -->
+    <select id="getPubCarUserInfos" parameterType="Map" resultType="Map">
+        SELECT pcu.car_user_id carUserId, pcu.user_id userId
+        <include refid="commonSql"/>
+    </select>
+
+    <!-- 自驾人列表 -->
+    <select id="getPubCarSelfDrivingUserInfos" parameterType="Map" resultType="Map">
+        SELECT pcu.car_user_id carUserId, uu.name, uu.sex gender, uo.org_name department, d.name `position`, uu.job_num jobNum, uu.tel
+        <include refid="commonSql"/>
+    </select>
+
+    <!-- 查询用车人业务表信息 -->
+    <select id="getBusinessPubCarUserInfo" parameterType="Map" resultType="Map">
+        select t.b_id bId, t.car_user_id carUserId, t.user_id userId, t.is_self_driving isSelfDriving, t.community_id communityId
+        from business_pubcar_car_user t
+        <where>
+            <if test="bId !=null and bId != ''">
+                t.b_id= #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and t.operate= #{operate}
+            </if>
+        </where>
+    </select>
+
+    <!-- 保存用车人业务表信息 -->
+    <insert id="saveBusinessPubCarUserInfo" parameterType="Map">
+        insert into business_pubcar_car_user(b_id, car_user_id, user_id, is_self_driving, community_id, operate)
+        values (#{bId}, #{carUserId}, #{userId}, #{isSelfDriving}, #{communityId}, #{operate})
+    </insert>
+
+    <!-- 保存用车人管理表信息 add by hh -->
+    <insert id="savePubCarUserInfo" parameterType="Map">
+        insert into pubcar_car_user(car_user_id, user_id, is_self_driving, community_id, b_id, status_cd)
+        select t.car_user_id, t.user_id, t.is_self_driving, t.community_id, t.b_id, '0'
+        from business_pubcar_car_user t
+        <where>
+            <if test="bId !=null and bId != ''">
+                t.b_id= #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and t.operate= #{operate}
+            </if>
+        </where>
+    </insert>
+
+    <!-- 查询用车人管理表信息 add by hh -->
+    <select id="getPubCarUserInfo" parameterType="Map" resultType="Map">
+        select t.car_user_id carUserId, t.user_id userId, t.is_self_driving isSelfDriving, t.community_id communityId, t.b_id bId
+        from pubcar_car_user t
+        <where>
+            <if test="statusCd !=null and statusCd != ''">
+                t.status_cd= #{statusCd}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+            <if test="carUserId !=null and carUserId != ''">
+                and t.car_user_id= #{carUserId}
+            </if>
+        </where>
+        order by t.create_time desc
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 修改用车人管理表信息 add by hh -->
+    <update id="updatePubCarUserInfo" parameterType="Map">
+        update pubcar_car_user t set t.status_cd = #{statusCd}
+        <if test="newBId != null and newBId != ''">
+            ,t.b_id = #{newBId}
+        </if>
+        <if test="userId !=null and userId != ''">
+            , t.user_id= #{userId}
+        </if>
+        <where>
+            <if test="carUserId !=null and carUserId != ''">
+                t.car_user_id= #{carUserId}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+            <if test="isSelfDriving !=null">
+                and t.is_self_driving= #{isSelfDriving}
+            </if>
+            <if test="communityId !=null and communityId != ''">
+                and t.community_id= #{communityId}
+            </if>
+        </where>
+    </update>
+
+    <!-- 查询用车人管理表数量 add by hh -->
+    <select id="queryPubCarUsersCount" parameterType="Map" resultType="Map">
+        SELECT count(pcu.car_user_id) count
+        FROM  pubcar_car_user pcu
+        LEFT JOIN u_user uu ON  pcu.user_id = uu.user_id
+        LEFT JOIN u_org_staff_rel uosr ON uu.user_id = uosr.staff_id
+        LEFT JOIN u_org uo ON uosr.org_id = uo.org_id
+        LEFT JOIN t_dict d ON d.status_cd = uosr.rel_cd
+        WHERE uu.status_cd = '0'
+        AND uo.status_cd = '0'
+        AND uosr.status_cd = '0'
+        AND pcu.status_cd = '0'
+        AND d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd'
+        and pcu.is_self_driving = #{isSelfDriving}
+        <if test="storeId !=null and storeId != ''">
+            and uosr.store_id = #{storeId}
+        </if>
+        <if test="tel !=null and tel != ''">
+            and uu.tel like concat('%',#{tel},'%')
+        </if>
+        <if test="name !=null and name != ''">
+            and uu.name like concat('%',#{name},'%')
+        </if>
+        <if test="department !=null and department != ''">
+            and uo.org_name like concat('%',#{department},'%')
+        </if>
+        <if test="position !=null and position != ''">
+            and d.name like concat('%',#{position},'%')
+        </if>
+        <if test="jobNum !=null and jobNum != ''">
+            and uu.job_num like concat('%',#{jobNum},'%')
+        </if>
+    </select>
+
+    <select id="queryPubCarUserDetailsCount" parameterType="com.java110.dto.pubCarUser.PubCarUserDto" resultType="Map">
+        SELECT count(uu.user_id) count
+        FROM u_user uu
+        LEFT JOIN u_org_staff_rel r ON r.staff_id = uu.user_id
+        LEFT JOIN u_org uo ON uo.org_id = r.org_id
+        LEFT JOIN t_dict d ON d.status_cd = r.rel_cd
+        WHERE d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd' AND uu.status_cd = '0' AND uu.level_cd = '01'
+        <if test="currentUserId != null and currentUserId != ''">
+            and uu.user_id = #{currentUserId}
+        </if>
+        <if test="tel !=null and tel != ''">
+            and uu.tel= #{tel}
+        </if>
+        <if test="name !=null and name != ''">
+            and uu.name like concat('%',#{name},'%')
+        </if>
+        <if test="department !=null and department != ''">
+            and uo.org_name like concat('%',#{department},'%')
+        </if>
+        <if test="position !=null and position != ''">
+            and d.name like concat('%',#{position},'%')
+        </if>
+        <if test="jobNum !=null and jobNum != ''">
+            and uu.job_num like concat('%',#{jobNum},'%')
+        </if>
+    </select>
+
+    <select id="getPubCarUserDetails" parameterType="com.java110.dto.pubCarUser.PubCarUserDto" resultType="com.java110.vo.api.pubCarUser.ApiPubCarUserDetailDataVo">
+        SELECT uu.user_id userId, uu.`name`, uu.sex gender, uu.job_num jobNum, uo.org_name department, d.`name` `position`, uu.tel
+        FROM u_user uu
+        LEFT JOIN u_org_staff_rel r ON r.staff_id = uu.user_id
+        LEFT JOIN u_org uo ON uo.org_id = r.org_id
+        LEFT JOIN t_dict d ON d.status_cd = r.rel_cd
+        WHERE d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd' AND uu.status_cd = '0' AND uu.level_cd = '01'
+        <if test="currentUserId != null and currentUserId != ''">
+            and uu.user_id = #{currentUserId}
+        </if>
+        <if test="tel !=null and tel != ''">
+            and uu.tel= #{tel}
+        </if>
+        <if test="name !=null and name != ''">
+            and uu.name like concat('%',#{name},'%')
+        </if>
+        <if test="department !=null and department != ''">
+            and uo.org_name like concat('%',#{department},'%')
+        </if>
+        <if test="position !=null and position != ''">
+            and d.name like concat('%',#{position},'%')
+        </if>
+        <if test="jobNum !=null and jobNum != ''">
+            and uu.job_num like concat('%',#{jobNum},'%')
+        </if>
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+</mapper>

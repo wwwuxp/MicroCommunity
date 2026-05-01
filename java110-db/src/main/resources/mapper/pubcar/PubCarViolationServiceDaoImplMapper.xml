@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubCarViolationServiceDaoImpl">
+
+    <!-- 根据司机id查询违章信息 -->
+    <select id="listPubCarDriverViolations" parameterType="com.java110.dto.pubCarViolation.PubCarViolationDto" resultType="com.java110.vo.api.pubCarViolation.ApiPubCarViolationDataVo">
+        SELECT pcv.violation_id violationId, pc.license, pc.brand, pc.model, pc.seat_num seatNum,
+               pcv.date violationTime, pcv.address, pcv.deduction, pcv.fine, pcv.content
+        FROM pubcar_car_violation pcv
+        LEFT JOIN pubcar_car pc ON pc.car_id = pcv.car_id AND pc.status_cd = '0'
+        WHERE pcv.driver_id IS NOT NULL
+            AND pcv.community_id = #{communityId}
+            AND pcv.handle_status = #{handleStatus}
+            <if test="driverId != null and driverId != ''">
+                AND pcv.driver_id = #{driverId}
+            </if>
+        ORDER BY pcv.create_time DESC
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 查询车辆违章信息 -->
+    <select id="listPubCarViolations" parameterType="com.java110.dto.pubCarViolation.PubCarViolationDto" resultType="com.java110.vo.api.pubCarViolation.ApiPubCarViolationDataVo">
+        SELECT pcv.violation_id violationId, pd.`name` driverName, uo.org_name department,
+                td.`name` position, pc.license, pc.brand, pc.model, pc.seat_num seatNum,
+                pcv.date violationTime, pcv.address, pcv.deduction, pcv.fine, pcv.content,pcv.driver_id driverId
+        FROM pubcar_car_violation pcv
+        LEFT JOIN pubcar_car pc ON pc.car_id = pcv.car_id AND pc.status_cd = '0'
+        LEFT JOIN pubcar_driver pd ON pd.driver_id = pcv.driver_id AND pd.status_cd = '0'
+        LEFT JOIN u_org uo ON uo.org_id = pd.department_id AND uo.status_cd = '0'
+        LEFT JOIN t_dict td ON td.status_cd = pd.position_id
+        AND td.table_name = 'u_org_staff_rel' AND td.table_columns = 'rel_cd'
+        WHERE pcv.driver_id IS NOT NULL
+          AND pcv.community_id = #{communityId}
+          AND pcv.handle_status = #{handleStatus}
+        ORDER BY pcv.create_time DESC
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 查询车辆违章业务表信息 -->
+    <select id="getBusinessPubCarViolationInfo" parameterType="map" resultType="map">
+        select b_id bId, violation_id violationId, `date`, address, driver, content, deduction, fine, car_id carId, driver_id driverId, handle_status handleStatus, community_id communityId
+        from business_pubcar_car_violation
+        <where>
+            <if test="bId !=null and bId != ''">
+                b_id= #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and operate= #{operate}
+            </if>
+        </where>
+    </select>
+
+    <!-- 保存车辆违章业务表信息 -->
+    <insert id="saveBusinessPubCarViolationInfo" parameterType="map">
+        insert into business_pubcar_car_violation(b_id, violation_id, `date`, address, driver, content, deduction, fine, car_id, driver_id, handle_status, operate, community_id)
+        values (#{bId}, #{violationId}, #{date}, #{address}, #{driver}, #{content}, #{deduction}, #{fine}, #{carId}, #{driverId}, #{handleStatus}, #{operate}, #{communityId})
+    </insert>
+
+    <!-- 保存车辆违章信息表信息 add by hh -->
+    <insert id="savePubCarViolationInfo" parameterType="Map">
+        insert into pubcar_car_violation(violation_id, `date`, address, driver, content, deduction, fine, car_id, driver_id, handle_status, b_id, community_id, status_cd)
+        select violation_id, date, address, driver, content, deduction, fine, car_id, driver_id, handle_status, b_id, community_id, '0'
+        from business_pubcar_car_violation
+        <where>
+            <if test="bId !=null and bId != ''">
+                b_id= #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and operate= #{operate}
+            </if>
+        </where>
+    </insert>
+
+    <!-- 查询车辆违章信息表信息 add by hh -->
+    <select id="getPubCarViolationInfo" parameterType="Map" resultType="Map">
+        select t.date,t.address,t.driver,t.deduction,t.fine,t.create_time,t.create_time createTime,t.b_id,t.b_id
+        bId,t.community_id,t.community_id communityId,t.content,t.violation_id,t.violation_id
+        violationId,t.car_id,t.car_id carId
+        from pubcar_car_violation t
+        <where>
+            <if test="date !=null and date != ''">
+                t.date= #{date}
+            </if>
+            <if test="address !=null and address != ''">
+                and t.address= #{address}
+            </if>
+            <if test="driver !=null and driver != ''">
+                and t.driver= #{driver}
+            </if>
+            <if test="deduction !=null and deduction != ''">
+                and t.deduction= #{deduction}
+            </if>
+            <if test="fine !=null and fine != ''">
+                and t.fine= #{fine}
+            </if>
+            <if test="createTime !=null and createTime != ''">
+                and t.create_time= #{createTime}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+            <if test="communityId !=null and communityId != ''">
+                and t.community_id= #{communityId}
+            </if>
+            <if test="content !=null and content != ''">
+                and t.content= #{content}
+            </if>
+            <if test="violationId !=null and violationId != ''">
+                and t.violation_id= #{violationId}
+            </if>
+            <if test="carId !=null and carId != ''">
+                and t.car_id= #{carId}
+            </if>
+            <if test="statusCd !=null and statusCd != ''">
+                and t.status_cd= #{statusCd}
+            </if>
+        </where>
+        order by t.create_time desc
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 修改车辆违章信息表信息 add by hh -->
+    <update id="updatePubCarViolationInfo" parameterType="Map">
+        update pubcar_car_violation t set t.status_cd = #{statusCd}
+        <if test="newBId != null and newBId != ''">
+            ,t.b_id = #{newBId}
+        </if>
+        <if test="handleStatus !=null">
+            ,t.handle_status= #{handleStatus}
+        </if>
+        <where>
+            <if test="bId !=null and bId != ''">
+                t.b_id= #{bId}
+            </if>
+            <if test="violationId !=null and violationId != ''">
+                and t.violation_id= #{violationId}
+            </if>
+        </where>
+    </update>
+
+    <!-- 查询车辆违章信息表数量 add by hh -->
+    <select id="queryPubCarViolationsCount" parameterType="com.java110.dto.pubCarViolation.PubCarViolationDto" resultType="int">
+        select count(1) count
+        from pubcar_car_violation t
+        where t.status_cd = '0' and t.driver_id IS NOT NULL
+        and t.handle_status= #{handleStatus}
+        and t.community_id= #{communityId}
+        <if test="driverId != null and driverId != ''">
+            and t.driver_id = #{driverId}
+        </if>
+    </select>
+
+</mapper>

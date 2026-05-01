@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubCarApproverServiceDaoImpl">
+
+    <!-- 根据id更新用车审批人 update by hh 2022/03/29 -->
+    <update id="updateById" parameterType="com.java110.dto.pubCarApprover.PubCarApproverDto">
+        UPDATE pubcar_approver
+        SET approver_id = #{approverId}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 获取所有的用车管理员信息 -->
+    <select id="getPubCarAdministrators" resultType="com.java110.dto.pubCarApprover.PubCarApproverDto">
+        SELECT uu.user_id approverId, uu.`name`
+        FROM pubcar_approver pa
+        LEFT JOIN u_user uu ON uu.user_id = pa.approver_id
+        WHERE pa.status_cd = '0'
+          AND uu.status_cd = '0'
+          AND pa.table_type = 1000
+          AND role_type = 2
+    </select>
+
+    <!-- 根据id获取部门名字 -->
+    <select id="getOrgNameByOrgIds" parameterType="java.util.List" resultType="com.java110.dto.org.OrgDto">
+        SELECT org_id orgId, org_name orgName
+        FROM u_org
+        WHERE status_cd = '0'
+          AND org_id IN
+          <foreach collection="collection" item="item" open="(" close=")" separator=",">
+              #{item}
+          </foreach>
+    </select>
+
+    <!-- 获取用户部门 -->
+    <select id="getUserDepartmentId" parameterType="map" resultType="string">
+        SELECT org_id orgId
+        FROM u_org_staff_rel
+        WHERE staff_id = #{userId} AND status_cd = '0'
+    </select>
+
+    <!-- 获取roleType=2的所有部门id -->
+    <select id="getAllBureauLeaderDepartmentId" resultType="com.java110.dto.pubCarApprover.PubCarApproverDto">
+        SELECT approver_id approverId, department_id departmentId
+        FROM pubcar_approver
+        WHERE role_type = 2 AND table_type = 2000 AND status_cd = '0'
+    </select>
+
+    <!-- 根据审批人id获取角色类型 -->
+    <select id="getRoleTypeAndDepartmentIdByApproverId" parameterType="map" resultType="com.java110.dto.pubCarApprover.PubCarApproverDto">
+        SELECT role_type roleType, department_id departmentId
+        FROM pubcar_approver
+        WHERE approver_id = #{userId} AND status_cd = '0' AND table_type = #{tableType}
+    </select>
+
+    <!-- 是否是用车审批人 -->
+    <select id="isApprover" parameterType="map" resultType="java.lang.Integer">
+        SELECT 1
+        FROM pubcar_approver
+        WHERE approver_id = #{userId} AND status_cd = '0' AND table_type = #{tableType}
+        LIMIT 1;
+    </select>
+
+    <!-- 根据id删除用车审批人 -->
+    <update id="deleteById" parameterType="com.java110.dto.pubCarApprover.PubCarApproverDto">
+        UPDATE pubcar_approver
+        SET status_cd = '1'
+        WHERE id = #{id}
+    </update>
+
+    <!-- 获取用车审批人列表 -->
+    <select id="queryPubCarApprovers" parameterType="com.java110.dto.pubCarApprover.PubCarApproverDto" resultType="com.java110.vo.api.pubCarApprover.ApiPubCarApproverDataVo">
+        SELECT pa.id, pa.approver_id approverId, pa.role_type roleType, pa.department_id approvalRange
+        FROM pubcar_approver pa
+        WHERE pa.community_id = #{communityId}
+          AND pa.status_cd = '0'
+          <if test="roleType != null">
+              AND pa.role_type = #{roleType}
+          </if>
+          AND pa.table_type = #{tableType}
+        ORDER BY pa.create_time DESC
+        <if test="page != -1 and page != null ">
+            LIMIT #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 获取用车审批人数量 -->
+    <select id="queryPubCarApproversCount" parameterType="com.java110.dto.pubCarApprover.PubCarApproverDto" resultType="int">
+        SELECT COUNT(*) count
+        FROM pubcar_approver
+        WHERE community_id = #{communityId}
+          AND status_cd = '0'
+          AND table_type = #{tableType}
+    </select>
+
+    <!-- 保存用车审批人信息 -->
+    <insert id="savePubCarApprover" parameterType="com.java110.dto.pubCarApprover.PubCarApproverDto">
+        INSERT INTO pubcar_approver(approver_id, role_type, department_id, table_type, b_id, community_id, status_cd)
+        VALUE (#{approverId}, #{roleType}, #{departmentId}, #{tableType}, '-1', #{communityId}, '0')
+    </insert>
+
+    <!-- 是否存在相同用车审批人信息 -->
+    <select id="existPubCarApprover" parameterType="com.java110.dto.pubCarApprover.PubCarApproverDto" resultType="java.lang.Integer">
+        SELECT 1
+        FROM pubcar_approver
+        WHERE status_cd = '0'
+          AND community_id = #{communityId}
+          AND approver_id IN
+          <foreach collection="approverIds" item="item" separator="," open="(" close=")">
+              #{item}
+          </foreach>
+          AND role_type = #{roleType}
+          AND table_type = #{tableType}
+        LIMIT 1;
+    </select>
+
+    <!-- 获取用车审核人信息 -->
+    <select id="getPubCarApprovers" parameterType="map" resultType="string">
+        SELECT approver_id approverId
+        FROM pubcar_approver
+        WHERE role_type = #{roleType} AND status_cd = '0' AND table_type = #{tableType}
+    </select>
+
+    <!-- 根据用户id获取领导的用户id -->
+    <select id="getUserLeader" parameterType="map" resultType="string">
+        SELECT approver_id approverId
+        FROM pubcar_approver
+        WHERE department_id IN (
+            SELECT org_id orgId
+            FROM u_org_staff_rel
+            WHERE staff_id = #{userId} AND status_cd = '0'
+        )
+          AND status_cd = '0'
+          AND table_type = #{tableType}
+        <if test="flag != null">
+            AND role_type = 3
+        </if>
+    </select>
+
+</mapper>

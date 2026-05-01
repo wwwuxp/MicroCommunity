@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubCarReimburseServiceDaoImpl">
+
+    <!-- 审批用车报销信息 -->
+    <update id="auditPubCarReimburses" parameterType="com.java110.dto.pubCarReimburse.PubCarReimburseDto">
+        UPDATE pubcar_reimburse SET approval_status = #{approvalStatus}
+        WHERE reimburse_id IN
+        <foreach collection="reimburseIds" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </update>
+
+    <!-- 查询用车报销列表 -->
+    <resultMap id="reimburse" type="com.java110.vo.api.pubCarReimburse.ApiPubCarReimburseDataVo">
+        <id property="userId" column="userId"/>
+        <result property="name" column="name"/>
+        <result property="department" column="department"/>
+        <result property="position" column="position"/>
+        <collection property="reimburses" ofType="com.java110.vo.api.pubCarReimburse.ReimburseDetailInfo">
+            <id property="reimburseId" column="reimburseId"/>
+            <result property="feeType" column="feeType"/>
+            <result property="reimburseAmount" column="reimburseAmount"/>
+            <result property="carUseDate" column="carUseDate"/>
+            <result property="start" column="start"/>
+            <result property="destination" column="destination"/>
+            <result property="invoice" column="invoice"/>
+            <result property="approvalStatus" column="approvalStatus"/>
+            <result property="remark" column="remark"/>
+        </collection>
+    </resultMap>
+    <select id="listPubCarReimburses" parameterType="com.java110.dto.pubCarReimburse.PubCarReimburseDto" resultMap="reimburse">
+        SELECT pr.user_id userId,uu.`name`, uo.org_name department, td.`name` position, pr.fee_type feeType, pr.reimburse_amount reimburseAmount,
+                DATE_FORMAT(pt.start_time,'%Y年%c月%e日') carUseDate, pt.`start`, pt.destination, pr.invoice, pr.approval_status approvalStatus,
+                pr.reimburse_id reimburseId, pr.create_time createTime
+        FROM pubcar_reimburse pr
+        LEFT JOIN pubcar_trip pt ON pt.trip_id = pr.trip_id AND pt.status_cd = '0'
+        LEFT JOIN u_user uu ON uu.user_id = pr.user_id AND uu.status_cd = '0'
+        LEFT JOIN u_org_staff_rel uosr ON uosr.staff_id = uu.user_id AND uosr.status_cd = '0'
+        LEFT JOIN u_org uo ON uo.org_id = uosr.org_id AND uo.status_cd = '0'
+        LEFT JOIN t_dict td ON td.status_cd = uosr.rel_cd AND td.table_name = 'u_org_staff_rel' AND td.table_columns = 'rel_cd'
+        WHERE pr.status_cd = '0'
+        AND pr.reimburse_id IN (
+            SELECT temp.id
+            FROM(
+                SELECT pr.reimburse_id id
+                FROM pubcar_reimburse pr
+                LEFT JOIN pubcar_trip pt ON pt.trip_id = pr.trip_id AND pt.status_cd = '0'
+                LEFT JOIN u_user uu ON uu.user_id = pr.user_id AND uu.status_cd = '0'
+                LEFT JOIN u_org_staff_rel uosr ON uosr.staff_id = uu.user_id AND uosr.status_cd = '0'
+                LEFT JOIN u_org uo ON uo.org_id = uosr.org_id AND uo.status_cd = '0'
+                LEFT JOIN t_dict td ON td.status_cd = uosr.rel_cd AND td.table_name = 'u_org_staff_rel' AND td.table_columns = 'rel_cd'
+                WHERE pr.status_cd = '0'
+                <if test="lessCarUseDate != null and lessCarUseDate != ''">
+                    <![CDATA[AND pt.start_time >= #{lessCarUseDate}]]>
+                </if>
+                <if test="moreCarUseDate != null and moreCarUseDate != ''">
+                    <![CDATA[AND pt.start_time <= #{moreCarUseDate}]]>
+                </if>
+                <if test="department != null and department != ''">
+                    AND uo.org_name LIKE concat('%',#{department},'%')
+                </if>
+                <if test="position != null and position!= ''">
+                    AND td.`name` LIKE concat('%',#{position},'%')
+                </if>
+                <if test="name != null and name != ''">
+                    AND uu.`name` LIKE concat('%',#{name},'%')
+                </if>
+                ORDER BY pr.create_time DESC
+                <if test="page != -1 and page != null ">
+                    LIMIT #{page}, #{row}
+                </if>
+            ) as temp
+        )
+    </select>
+
+    <!-- 查询用车报销列表数量 -->
+    <select id="listPubCarReimbursesCount" parameterType="com.java110.dto.pubCarReimburse.PubCarReimburseDto" resultType="int">
+        SELECT COUNT(DISTINCT pr.user_id) count
+        FROM pubcar_reimburse pr
+        LEFT JOIN pubcar_trip pt ON pt.trip_id = pr.trip_id AND pt.status_cd = '0'
+        LEFT JOIN u_user uu ON uu.user_id = pr.user_id AND uu.status_cd = '0'
+        LEFT JOIN u_org_staff_rel uosr ON uosr.staff_id = uu.user_id AND uosr.status_cd = '0'
+        LEFT JOIN u_org uo ON uo.org_id = uosr.org_id AND uo.status_cd = '0'
+        LEFT JOIN t_dict td ON td.status_cd = uosr.rel_cd AND td.table_name = 'u_org_staff_rel' AND td.table_columns = 'rel_cd'
+        WHERE pr.status_cd = '0'
+        <if test="lessCarUseDate != null and lessCarUseDate != ''">
+            <![CDATA[AND pt.start_time >= #{lessCarUseDate}]]>
+        </if>
+        <if test="moreCarUseDate != null and moreCarUseDate != ''">
+            <![CDATA[AND pt.start_time <= #{moreCarUseDate}]]>
+        </if>
+        <if test="department != null and department != ''">
+            AND uo.org_name LIKE concat('%',#{department},'%')
+        </if>
+        <if test="position != null and position!= ''">
+            AND td.`name` LIKE concat('%',#{position},'%')
+        </if>
+        <if test="name != null and name != ''">
+            AND uu.`name` LIKE concat('%',#{name},'%')
+        </if>
+    </select>
+
+    <!-- 保存用车报销实例表数据 -->
+    <insert id="savePubCarReimburseInfo" parameterType="map">
+        INSERT INTO pubcar_reimburse(reimburse_id,fee_type,reimburse_amount,trip_id,invoice,remark,approval_status,user_id,b_id,status_cd,community_id)
+        SELECT reimburse_id,fee_type,reimburse_amount,trip_id,invoice,remark,approval_status,user_id,b_id,'0',community_id
+        FROM business_pubcar_reimburse
+        WHERE b_id = #{bId} AND operate = #{operate}
+    </insert>
+
+    <!-- 根据bId和operate获取用车报销业务表数据 -->
+    <select id="getBusinessPubCarReimburseInfo" parameterType="map" resultType="map">
+        SELECT b_id bId,reimburse_id reimburseId,fee_type feeType,reimburse_amount reimburseAmount,trip_id tripId,
+               invoice,remark,approval_status approvalStatus,user_id userId,operate,community_id communityId
+        FROM business_pubcar_reimburse
+        WHERE b_id = #{bId} AND operate = #{operate}
+    </select>
+
+    <!-- 保存用车报销业务信息 -->
+    <insert id="saveBusinessPubCarReimburseInfo" parameterType="map">
+        INSERT INTO business_pubcar_reimburse(b_id,reimburse_id,fee_type,reimburse_amount,trip_id,invoice,remark,approval_status,user_id,operate,community_id)
+        VALUES (#{bId},#{reimburseId},#{feeType},#{reimburseAmount},#{tripId},#{invoice},#{remark},#{approvalStatus},#{userId},#{operate},#{communityId})
+    </insert>
+
+</mapper>

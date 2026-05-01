@@ -1,0 +1,25 @@
+version: '2'
+services:
+   jobserivce:
+       container_name: jobserivce-1
+       build:
+          context: .
+          dockerfile: Dockerfile
+       restart: always
+       ports:
+       - "8014:8014"
+       volumes:
+       - ../target/service-job.jar:/root/target/service-job.jar
+#       networks:
+#       - java110-net
+#       mem_limit: 1536m
+       extra_hosts:
+       - "dev.java110.com:192.168.0.181"
+       - "dev.db.java110.com:192.168.0.181"
+       - "dev.zk.java110.com:192.168.0.181"
+       - "dev.kafka.java110.com:192.168.0.181"
+       - "dev.redis.java110.com:192.168.0.181"
+       - "api.java110.com:192.168.0.181"
+#networks:
+#  java110-net:
+#    external: true

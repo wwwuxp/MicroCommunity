@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="outGoingPersonnelServiceDaoImpl">
+
+    <!-- 根据姓名，部门，职位和时间判断在该时间段内是否有外出 -->
+    <select id="isOutGoing" parameterType="com.java110.dto.attendance.UserInfoDto" resultType="java.lang.Integer">
+        SELECT 1
+        FROM outgoing_personnel op
+        LEFT JOIN outgoing og ON og.out_id = op.out_id
+        LEFT JOIN u_user uu ON uu.user_id = op.user_id AND uu.status_cd = '0'
+        LEFT JOIN u_org_staff_rel uosl ON uosl.staff_id = uu.user_id AND uosl.status_cd = '0'
+        LEFT JOIN u_org uo ON uo.org_id = uosl.org_id AND uo.status_cd = '0'
+        LEFT JOIN t_dict td ON td.status_cd = uosl.rel_cd AND td.table_name = 'u_org_staff_rel' AND td.table_columns = 'rel_cd'
+        WHERE uu.`name` = #{name}
+          AND uo.org_name = #{department}
+          AND op.status_cd = '0' AND og.status_cd = '0' AND og.state = 3
+          <if test="fixedStartWorkDateTime != null and fixedStartWorkDateTime != ''">
+              <![CDATA[AND og.start_time <= #{fixedStartWorkDateTime}]]>
+          </if>
+          <if test="fixedEndWorkDateTime != null and fixedEndWorkDateTime != ''">
+              <![CDATA[AND og.end_time >= #{fixedEndWorkDateTime}]]>
+          </if>
+        LIMIT 1
+    </select>
+
+    <!-- 根据姓名，部门，职位来查询所有的外出时间段 -->
+    <select id="listOutGoingTimesByUserInfo" parameterType="com.java110.dto.attendance.UserInfoDto" resultType="com.java110.dto.outGoing.OutGoingDto">
+        SELECT og.start_time startTime, og.end_time endTime
+        FROM outgoing_personnel op
+        LEFT JOIN outgoing og ON og.out_id = op.out_id
+        LEFT JOIN u_user uu ON uu.user_id = op.user_id AND uu.status_cd = '0'
+        LEFT JOIN u_org_staff_rel uosl ON uosl.staff_id = uu.user_id AND uosl.status_cd = '0'
+        LEFT JOIN u_org uo ON uo.org_id = uosl.org_id AND uo.status_cd = '0'
+        LEFT JOIN t_dict td ON td.status_cd = uosl.rel_cd AND td.table_name = 'u_org_staff_rel' AND td.table_columns = 'rel_cd'
+        WHERE uu.`name` = #{name}
+          AND uo.org_name = #{department}
+          AND op.status_cd = '0' AND og.status_cd = '0' AND og.state = 3
+          AND (DATE_FORMAT(og.start_time,'%Y-%m-%d') = #{attendanceDate} OR DATE_FORMAT(og.end_time,'%Y-%m-%d') = #{attendanceDate})
+    </select>
+
+    <!-- 获取外出人员业务表信息 -->
+    <select id="getBusinessOutGoingPersonnelInfo" parameterType="map" resultType="map">
+        SELECT b_id bId, personnel_id personnelId, user_id userId, out_id outId, operate
+        FROM business_outgoing_personnel
+        WHERE b_id = #{bId} AND operate = #{operate}
+    </select>
+
+    <!-- 保存外出人员业务信息 -->
+    <insert id="saveBusinessOutGoingPersonnelInfo" parameterType="map">
+        INSERT INTO business_outgoing_personnel(b_id, personnel_id, user_id, out_id, operate)
+        VALUES (#{bId}, #{personnelId}, #{userId}, #{outId}, #{operate})
+    </insert>
+
+    <!-- 保存外出人员信息表信息 add by hh -->
+    <insert id="saveOutGoingPersonnelInfo" parameterType="Map">
+        INSERT INTO outgoing_personnel(personnel_id, user_id, out_id, b_id, status_cd)
+        SELECT personnel_id, user_id, out_id, b_id, '0'
+        FROM business_outgoing_personnel
+        WHERE b_id = #{bId} AND operate = #{operate}
+    </insert>
+
+    <!-- 查询外出人员信息表信息 add by hh -->
+    <select id="getOutGoingPersonnelInfo" parameterType="Map" resultType="Map">
+        select t.personnel_id,t.personnel_id personnelId,t.create_time,t.create_time createTime,t.out_id,t.out_id
+        outId,t.status_cd,t.status_cd statusCd,t.b_id,t.b_id bId,t.user_id,t.user_id userId
+        from outgoing_personnel t
+        where 1 =1
+        <if test="personnelId !=null and personnelId != ''">
+            and t.personnel_id= #{personnelId}
+        </if>
+        <if test="createTime !=null and createTime != ''">
+            and t.create_time= #{createTime}
+        </if>
+        <if test="outId !=null and outId != ''">
+            and t.out_id= #{outId}
+        </if>
+        <if test="statusCd !=null and statusCd != ''">
+            and t.status_cd= #{statusCd}
+        </if>
+        <if test="bId !=null and bId != ''">
+            and t.b_id= #{bId}
+        </if>
+        <if test="userId !=null and userId != ''">
+            and t.user_id= #{userId}
+        </if>
+        order by t.create_time desc
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+
+    </select>
+
+    <!-- 修改外出人员信息表信息 add by hh -->
+    <update id="updateOutGoingPersonnelInfo" parameterType="Map">
+        update outgoing_personnel t set t.status_cd = #{statusCd}
+        <if test="newBId != null and newBId != ''">
+            ,t.b_id = #{newBId}
+        </if>
+        <if test="createTime !=null and createTime != ''">
+            , t.create_time= #{createTime}
+        </if>
+        <if test="outId !=null and outId != ''">
+            , t.out_id= #{outId}
+        </if>
+        <if test="userId !=null and userId != ''">
+            , t.user_id= #{userId}
+        </if>
+        where 1=1
+        <if test="personnelId !=null and personnelId != ''">
+            and t.personnel_id= #{personnelId}
+        </if>
+        <if test="bId !=null and bId != ''">
+            and t.b_id= #{bId}
+        </if>
+
+    </update>
+
+    <!-- 查询外出人员信息表数量 add by hh -->
+    <select id="queryOutGoingPersonnelsCount" parameterType="Map" resultType="Map">
+        select count(1) count
+        from outgoing_personnel t
+        where 1 =1
+        <if test="personnelId !=null and personnelId != ''">
+            and t.personnel_id= #{personnelId}
+        </if>
+        <if test="createTime !=null and createTime != ''">
+            and t.create_time= #{createTime}
+        </if>
+        <if test="outId !=null and outId != ''">
+            and t.out_id= #{outId}
+        </if>
+        <if test="statusCd !=null and statusCd != ''">
+            and t.status_cd= #{statusCd}
+        </if>
+        <if test="bId !=null and bId != ''">
+            and t.b_id= #{bId}
+        </if>
+        <if test="userId !=null and userId != ''">
+            and t.user_id= #{userId}
+        </if>
+
+    </select>
+
+</mapper>

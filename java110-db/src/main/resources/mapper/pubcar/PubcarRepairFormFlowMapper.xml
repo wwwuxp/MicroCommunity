@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubcarRepairFormFlowDaoImpl">
+    <resultMap id="BaseResultMap" type="com.java110.entity.pubcar.PubcarRepairFormFlow">
+        <!--@Table -->
+        <result property="flowId" column="flow_id" jdbcType="VARCHAR"/>
+        <result property="repairId" column="repair_id" jdbcType="VARCHAR"/>
+        <result property="userId" column="user_id" jdbcType="VARCHAR"/>
+        <result property="userName" column="user_name" jdbcType="VARCHAR"/>
+        <result property="status" column="status" jdbcType="VARCHAR"/>
+        <result property="flowName" column="flow_name" jdbcType="VARCHAR"/>
+        <result property="remark" column="remark" jdbcType="VARCHAR"/>
+        <result property="flowIndex" column="flow_index" jdbcType="VARCHAR"/>
+        <result property="flowStep" column="flow_step" jdbcType="VARCHAR"/>
+        <result property="index" column="flow_index" jdbcType="INTEGER"/>
+        <result property="createTime" column="create_time" jdbcType="INTEGER"/>
+        <result property="updateTime" column="update_time" jdbcType="INTEGER"/>
+    </resultMap>
+    <sql id="columnArr">
+        flow_id AS flowId,
+        repair_id AS repairId,
+        user_id AS userId,
+        user_name AS userName,
+        status AS status,
+        flow_name AS flowName,
+        remark AS remark,
+        flow_index AS flowIndex,
+        flow_step AS flowStep,
+        create_time AS createTime,
+        update_time AS updateTime
+        </sql>
+
+    <sql id="selectWhere">
+        <if test="flowId != null and flowId != ''">
+            AND flow_id = #{flowId}
+        </if>
+        <if test="repairId != null and repairId != ''">
+            AND repair_id = #{repairId}
+        </if>
+        <if test="userId != null and userId != ''">
+            AND user_id = #{userId}
+        </if>
+        <if test="userName != null and userName != ''">
+            AND user_name = #{userName}
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="flowName != null and flowName != ''">
+            AND flow_name = #{flowName}
+        </if>
+        <if test="remark != null and remark != ''">
+            AND remark = #{remark}
+        </if>
+        <if test="index != null and index != ''">
+            AND flow_index = #{index}
+        </if>
+        <if test="flowStep != null and flowStep != ''">
+            AND flow_step = #{flowStep}
+        </if>
+    </sql>
+
+    <!-- 根据id查询数据 -->
+    <select id="queryById" resultMap="BaseResultMap">
+        select
+        <include refid="columnArr"></include>
+        from pubcar_repair_form_flow
+        where flow_id = #{flowId}
+    </select>
+    <!-- 分页查询queryAllByLimit -->
+    <select id="queryList" resultMap="BaseResultMap">
+        select
+        <include refid="columnArr"></include>
+        from pubcar_repair_form_flow
+        where 1=1
+        <include refid="selectWhere"></include>
+        order by repair_id, flow_step is null, flow_step asc, flow_index asc
+    </select>
+    <!-- 查询总数 -->
+    <select id="count" resultType="int">
+        select count(1) `count`
+        from pubcar_repair_form_flow
+        where 1=1
+        <include refid="selectWhere"></include>
+    </select>
+    <!--新增，单独-->
+    <insert id="insert" keyProperty="id" useGeneratedKeys="true">
+        insert into tt.pubcar_repair_form_flow(`flow_id`, `repair_id`, `user_id`, `user_name`, `status`, `flow_name`,
+                                               `remark`, `flow_index`, `flow_step`)
+        values (#{flowId}, #{repairId}, #{userId}, #{userName}, #{status}, #{flowName}, #{remark}, #{index}, #{flowStep})
+    </insert>
+    <!-- 批量插入 -->
+    <insert id="insertBatch" keyProperty="flowId" useGeneratedKeys="true">
+        insert into tt.pubcar_repair_form_flow(`flow_id`, `repair_id`, `user_id`, `user_name`, `status`, `flow_name`,
+        `remark`, `flow_index`, `flow_step`)
+        values
+        <foreach collection="list" item="entity" separator=",">
+            (#{entity.flowId}, #{entity.repairId}, #{entity.userId}, #{entity.userName}, #{entity.status},
+            #{entity.flowName}, #{entity.remark}, #{entity.index}, #{entity.flowStep})
+        </foreach>
+    </insert>
+    <!-- 批量插入或按主键更新 -->
+    <insert id="insertOrUpdateBatch" keyProperty="flowId" useGeneratedKeys="true">
+        insert into tt.pubcar_repair_form_flow(`flow_id`, `repair_id`, `user_id`, `user_name`, `status`, `flow_name`,
+        `remark`, `flow_index`, `flow_step`)
+        values
+        <foreach collection="list" item="entity" separator=",">
+            (#{entity.flowId}, #{entity.repairId}, #{entity.userId}, #{entity.userName}, #{entity.status},
+            #{entity.flowName}, #{entity.remark}, #{entity.index}, #{entity.flowStep})
+        </foreach>
+        on duplicate key update
+        flow_id = values(flow_id)
+    </insert>
+    <!--单个修改-->
+    <update id="update" parameterType="com.java110.entity.pubcar.PubcarRepairFormFlow">
+        update pubcar_repair_form_flow
+        <set>
+            <if test="flowId != null and flowId != ''">
+                flow_id = #{flowId},
+            </if>
+            <if test="repairId != null and repairId != ''">
+                repair_id = #{repairId},
+            </if>
+            <if test="userId != null and userId != ''">
+                user_id = #{userId},
+            </if>
+            <if test="userName != null and userName != ''">
+                user_name = #{userName},
+            </if>
+            <if test="status != null and status != ''">
+                status = #{status},
+            </if>
+            <if test="remark != null and remark != ''">
+                remark = #{remark},
+            </if>
+            <if test="index != null and index != ''">
+                flow_index = #{index},
+            </if>
+            <if test="flowStep != null and flowStep != ''">
+                flow_step = #{flowStep},
+            </if>
+            <if test="updateTime != null">
+                update_time = #{updateTime},
+            </if>
+        </set>
+        where flow_id = #{flowId}
+    </update>
+    <delete id="deleteById">
+        delete
+        from pubcar_repair_form_flow
+        where flow_id = #{flowId}
+    </delete>
+
+    <select id="queryListByIds" resultMap="BaseResultMap">
+        select
+        <include refid="columnArr"></include>
+        from pubcar_repair_form_flow
+        where repair_id in
+        <foreach collection="list" open="(" separator="," close=")" item="id">
+            #{id}
+        </foreach>
+        order by repair_id, flow_step is null, flow_step asc, flow_index asc
+    </select>
+
+</mapper>
+

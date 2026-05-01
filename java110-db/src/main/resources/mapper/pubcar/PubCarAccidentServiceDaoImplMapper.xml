@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubCarAccidentServiceDaoImpl">
+
+    <!-- 查询用车事故列表 -->
+    <select id="listPubCarAccidents" parameterType="com.java110.dto.pubCarAccident.PubCarAccidentDto" resultType="com.java110.vo.api.pubCarAccident.ApiPubCarAccidentDataVo">
+        SELECT uu.`name`, uo.org_name department, td.`name` position, DATE_FORMAT(pt.start_time,'%Y年%c月%e日') carUseDate,
+                pt.`start`, pt.destination, pt.start_time startTime, pt.end_time endTime, pa.accident_scene_img accidentSceneImg,
+                pa.responsibility_confirm_img responsibilityConfirmImg, pa.detail
+        FROM pubcar_accident pa
+        LEFT JOIN pubcar_trip pt ON pt.trip_id = pa.trip_id AND pt.status_cd = '0'
+        LEFT JOIN u_user uu ON uu.user_id = pt.user_id AND uu.status_cd = '0'
+        LEFT JOIN u_org_staff_rel uosr ON uosr.staff_id = uu.user_id AND uosr.status_cd = '0'
+        LEFT JOIN u_org uo ON uo.org_id = uosr.org_id AND uo.status_cd = '0'
+        LEFT JOIN t_dict td ON td.status_cd = uosr.rel_cd AND td.table_name = 'u_org_staff_rel' AND td.table_columns = 'rel_cd'
+        WHERE pa.status_cd = '0'
+        <if test="lessCarUseDate != null and lessCarUseDate != ''">
+            <![CDATA[AND pt.start_time >= #{lessCarUseDate}]]>
+        </if>
+        <if test="moreCarUseDate != null and moreCarUseDate != ''">
+            <![CDATA[AND pt.start_time <= #{moreCarUseDate}]]>
+        </if>
+        <if test="department != null and department != ''">
+            AND uo.org_name LIKE concat('%',#{department},'%')
+        </if>
+        <if test="position != null and position!= ''">
+            AND td.`name` LIKE concat('%',#{position},'%')
+        </if>
+        <if test="name != null and name != ''">
+            AND uu.`name` LIKE concat('%',#{name},'%')
+        </if>
+        ORDER BY pa.create_time DESC
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 查询用车事故列表数量 -->
+    <select id="listPubCarAccidentsCount" parameterType="com.java110.dto.pubCarAccident.PubCarAccidentDto" resultType="int">
+        SELECT COUNT(1) count
+        FROM pubcar_accident pa
+        LEFT JOIN pubcar_trip pt ON pt.trip_id = pa.trip_id AND pt.status_cd = '0'
+        LEFT JOIN u_user uu ON uu.user_id = pt.user_id AND uu.status_cd = '0'
+        LEFT JOIN u_org_staff_rel uosr ON uosr.staff_id = uu.user_id AND uosr.status_cd = '0'
+        LEFT JOIN u_org uo ON uo.org_id = uosr.org_id AND uo.status_cd = '0'
+        LEFT JOIN t_dict td ON td.status_cd = uosr.rel_cd AND td.table_name = 'u_org_staff_rel' AND td.table_columns = 'rel_cd'
+        WHERE pa.status_cd = '0'
+        <if test="lessCarUseDate != null and lessCarUseDate != ''">
+            <![CDATA[AND pt.start_time >= #{lessCarUseDate}]]>
+        </if>
+        <if test="moreCarUseDate != null and moreCarUseDate != ''">
+            <![CDATA[AND pt.start_time <= #{moreCarUseDate}]]>
+        </if>
+        <if test="department != null and department != ''">
+            AND uo.org_name LIKE concat('%',#{department},'%')
+        </if>
+        <if test="position != null and position!= ''">
+            AND td.`name` LIKE concat('%',#{position},'%')
+        </if>
+        <if test="name != null and name != ''">
+            AND uu.`name` LIKE concat('%',#{name},'%')
+        </if>
+    </select>
+
+    <!-- 保存用车事故实例表信息 -->
+    <insert id="savePubCarAccidentInfo" parameterType="map">
+        INSERT INTO pubcar_accident(accident_id, trip_id, accident_scene_img, responsibility_confirm_img, accident_location, detail, status_cd, community_id, b_id)
+        SELECT accident_id, trip_id, accident_scene_img, responsibility_confirm_img, accident_location, detail, '0', community_id, b_id
+        FROM business_pubcar_accident
+        WHERE b_id = #{bId} AND operate = #{operate}
+    </insert>
+
+    <!-- 根据bId和operate获取用车事故业务表数据 -->
+    <select id="getBusinessPubCarAccidentInfo" parameterType="map" resultType="map">
+        SELECT b_id bId, accident_id accidentId, trip_id tripId, accident_scene_img accidentSceneImg,
+               responsibility_confirm_img responsibilityConfirmImg, accident_location accidentLocation, detail, operate, community_id communityId
+        FROM business_pubcar_accident
+        WHERE b_id = #{bId} AND operate = #{operate}
+    </select>
+    
+    <!-- 保存用车事故业务表信息 -->
+    <insert id="saveBusinessPubCarAccidentInfo" parameterType="map">
+        INSERT INTO business_pubcar_accident(b_id, accident_id, trip_id, accident_scene_img, responsibility_confirm_img, accident_location, detail, operate, community_id)
+        VALUES (#{bId},#{accidentId},#{tripId},#{accidentSceneImg},#{responsibilityConfirmImg},#{accidentLocation},#{detail},#{operate},#{communityId})
+    </insert>
+
+</mapper>

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="attendanceNotWorkDateDaoImpl">
+
+    <!-- 查询参数校验 -->
+    <sql id="queryConditions">
+        <if test="year != null and year != ''">
+            AND `year` = #{year}
+        </if>
+        <if test="startYear != null and startYear != ''">
+            AND `year` >= #{startYear}
+        </if>
+        <if test="endYear != null and endYear != ''">
+            AND `year` $lt;= #{endYear}
+        </if>
+        <if test="type != null and type != ''">
+            AND `type` = #{type}
+        </if>
+    </sql>
+
+    <!-- 查询休息日列表   -->
+    <select id="queryPageList" parameterType="com.alibaba.fastjson.JSONObject" resultType="com.java110.vo.api.attendance.AttendanceNotWorkDateVo">
+        SELECT `id`, `year`, `content` , `type`
+        FROM attendance_not_work_date
+        WHERE deleted_flag = 0
+        <include refid="queryConditions"></include>
+        ORDER BY `year` DESC, `create_time`
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 查询数据总数 -->
+    <select id="queryCount" parameterType="com.alibaba.fastjson.JSONObject" resultType="int">
+        select count(1) `count`
+        FROM attendance_not_work_date
+        WHERE deleted_flag = 0
+        <include refid="queryConditions"></include>
+    </select>
+
+    <!-- 新增非工作日 -->
+    <insert id="saveAttendanceNotWorkDate" parameterType="com.java110.po.attendance.AttendanceNotWorkDatePo">
+        INSERT INTO `attendance_not_work_date` (
+            `content`,
+            `year`,
+            `type`,
+            `storeId`
+        )
+        VALUES
+        (
+            #{content},
+            #{year},
+            #{type},
+            #{storeId}
+        )
+    </insert>
+    <!-- 修改非工作日 -->
+    <update id="updateAttendanceNotWorkDate" parameterType="com.java110.po.attendance.AttendanceNotWorkDatePo">
+        UPDATE `attendance_not_work_date`
+        <set>
+            <if test="year != null and year != ''">
+                `year` = #{year},
+            </if>
+            <if test="content != null and content != ''">
+                `content` = #{content},
+            </if>
+            <if test="type != null and type != ''">
+                `type` = #{type},
+            </if>
+            <if test="storeId != null and storeId != ''">
+                `year` = #{storeId},
+            </if>
+            <if test="deletedFlag != null and deletedFlag != ''">
+                `deleted_flag` = #{deletedFlag}
+            </if>
+        </set>
+        <where>
+            <if test="id != null and id != ''">
+                id = #{id}
+            </if>
+        </where>
+    </update>
+
+    <!-- 判断是否为非工作日 -->
+    <select id="whetherTheDateIsARestDay" parameterType="string" resultType="int">
+        SELECT COUNT(1) `count`
+        FROM `attendance_not_work_date`
+        WHERE `year` = DATE_FORMAT(#{dateStr}, '%Y') AND FIND_IN_SET(#{dateStr}, content) AND deleted_flag = 0;
+    </select>
+</mapper>

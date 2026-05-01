@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubCarGroupServiceDaoImpl">
+
+    <!-- 是否存在相同分组名称和分组类型的分组 -->
+    <select id="existPubCarGroup" parameterType="com.java110.dto.pubCarGroup.PubCarGroupDto" resultType="java.lang.Integer">
+        SELECT 1
+        FROM pubcar_group
+        WHERE community_id = #{communityId} AND status_cd = '0' AND group_name = #{groupName} AND group_type = #{groupType}
+        <if test="groupId !=null and groupId != ''">
+            <![CDATA[AND group_id <> #{groupId}]]>
+        </if>
+        LIMIT 1;
+    </select>
+
+    <!-- 获取分组名称 -->
+    <select id="queryPubCarGroupNames" parameterType="string" resultType="com.java110.vo.api.pubCarGroup.ApiPubCarGroupDataVo">
+        SELECT group_id groupId, group_name groupName
+        FROM pubcar_group
+        WHERE community_id = #{communityId} AND status_cd = '0'
+    </select>
+
+    <!-- 获取分组业务表信息 -->
+    <select id="getBusinessPubCarGroupInfo" parameterType="map" resultType="map">
+        select b_id bId, group_id groupId, group_name groupName, group_type groupType, community_id communityId
+        from business_pubcar_group
+        <where>
+            <if test="bId !=null and bId != ''">
+                b_id = #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and operate = #{operate}
+            </if>
+        </where>
+    </select>
+
+    <!-- 保存分组信息业务表 -->
+    <insert id="saveBusinessPubCarGroupInfo" parameterType="map">
+        insert into business_pubcar_group (b_id, group_id, group_name, group_type, community_id, operate)
+        values (#{bId}, #{groupId}, #{groupName}, #{groupType}, #{communityId}, #{operate});
+    </insert>
+
+    <!-- 保存分组表信息 add by hh -->
+    <insert id="savePubCarGroupInfo" parameterType="Map">
+        insert into pubcar_group(group_id, group_name, group_type, status_cd, community_id, b_id)
+        select group_id, group_name, group_type, '0', community_id, b_id
+        from business_pubcar_group
+        <where>
+            <if test="bId !=null and bId != ''">
+                b_id = #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and operate = #{operate}
+            </if>
+        </where>
+    </insert>
+
+    <!-- 查询分组信息表信息 add by hh -->
+    <select id="getPubCarGroupInfo" parameterType="Map" resultType="Map">
+        select t.group_id groupId, t.group_type groupType, t.group_name groupName, t.community_id communityId, t.create_time createTime
+        from pubcar_group t
+        <where>
+            <if test="statusCd !=null and statusCd != ''">
+                t.status_cd = #{statusCd}
+            </if>
+            <if test="groupName !=null and groupName != ''">
+                and t.group_name like concat('%',#{groupName},'%')
+            </if>
+            <if test="groupType !=null">
+                and t.group_type= #{groupType}
+            </if>
+            <if test="groupId !=null and groupId != ''">
+                and t.group_id= #{groupId}
+            </if>
+            <if test="communityId !=null and communityId != ''">
+                and t.community_id= #{communityId}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+        </where>
+        order by t.create_time desc
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 修改分组表信息 add by hh -->
+    <update id="updatePubCarGroupInfo" parameterType="Map">
+        update pubcar_group t set t.status_cd = #{statusCd}
+        <if test="newBId != null and newBId != ''">
+            ,t.b_id = #{newBId}
+        </if>
+        <if test="groupName !=null and groupName != ''">
+            , t.group_name= #{groupName}
+        </if>
+        <if test="groupType !=null">
+            , t.group_type= #{groupType}
+        </if>
+        <where>
+            <if test="groupId !=null and groupId !=''">
+                t.group_id= #{groupId}
+            </if>
+            <if test="bId !=null and bId !=''">
+                and t.b_id= #{bId}
+            </if>
+        </where>
+    </update>
+
+    <!-- 查询分组信息表数量 add by hh -->
+    <select id="queryPubCarGroupsCount" parameterType="com.java110.dto.pubCarGroup.PubCarGroupDto" resultType="Map">
+        select count(1) count
+        from pubcar_group t
+        where t.status_cd = '0'
+        <if test="groupName !=null and groupName != ''">
+            and t.group_name like concat('%',#{groupName},'%')
+        </if>
+        <if test="groupType !=null">
+            and t.group_type = #{groupType}
+        </if>
+        <if test="groupId !=null and groupId != ''">
+            and t.group_id = #{groupId}
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            and t.community_id = #{communityId}
+        </if>
+    </select>
+
+</mapper>

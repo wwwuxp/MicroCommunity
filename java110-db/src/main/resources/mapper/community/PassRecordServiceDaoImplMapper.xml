@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="passRecordServiceDaoImpl">
+
+    <!-- 查询通行记录总数量(查询条件中进行了函数处理，不走索引了，不过，这张表的数据只留近3个月的)-->
+    <select id="queryPassRecordsCount" parameterType="com.java110.dto.attendance.PassRecordDto" resultType="int">
+        SELECT COUNT(*)
+        FROM pass_record
+        WHERE company_name NOT IN ('物业', '保安', '供应商', '访客', '访客专用策略')
+        <if test="name != null and name != ''">
+            AND person_name LIKE concat(#{name},'%')
+        </if>
+        <if test="department != null and department != ''">
+            AND company_name LIKE concat(#{department},'%')
+        </if>
+        <if test="smallTime != null">
+            AND DATE_FORMAT(pass_time,'%H:%i:%s') >= #{smallTime}
+        </if>
+        <if test="bigTime != null">
+            <![CDATA[AND DATE_FORMAT(pass_time,'%H:%i:%s') <= #{bigTime}]]>
+        </if>
+        <if test="smallDate != null">
+            AND DATE_FORMAT(pass_time,'%Y-%m-%d') >= #{smallDate}
+        </if>
+        <if test="bigDate != null">
+            <![CDATA[AND DATE_FORMAT(pass_time,'%Y-%m-%d') <= #{bigDate}]]>
+        </if>
+    </select>
+
+    <!-- 查询通行记录列表 -->
+    <select id="queryPassRecords" parameterType="com.java110.dto.attendance.PassRecordDto" resultType="com.java110.vo.api.passRecord.ApiPassRecordDataVo">
+        SELECT person_name `name`, company_name department, device_name deviceName, pass_time passTime
+        FROM pass_record
+        WHERE company_name NOT IN ('物业', '保安', '供应商', '访客', '访客专用策略')
+        <if test="name != null and name != ''">
+            AND person_name LIKE concat(#{name},'%')
+        </if>
+        <if test="department != null and department != ''">
+            AND company_name LIKE concat(#{department},'%')
+        </if>
+        <if test="smallTime != null">
+            AND DATE_FORMAT(pass_time,'%H:%i:%s') >= #{smallTime}
+        </if>
+        <if test="bigTime != null">
+            <![CDATA[AND DATE_FORMAT(pass_time,'%H:%i:%s') <= #{bigTime}]]>
+        </if>
+        <if test="smallDate != null">
+            AND DATE_FORMAT(pass_time,'%Y-%m-%d') >= #{smallDate}
+        </if>
+        <if test="bigDate != null">
+            <![CDATA[AND DATE_FORMAT(pass_time,'%Y-%m-%d') <= #{bigDate}]]>
+        </if>
+        ORDER BY pass_time DESC, id
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+</mapper>

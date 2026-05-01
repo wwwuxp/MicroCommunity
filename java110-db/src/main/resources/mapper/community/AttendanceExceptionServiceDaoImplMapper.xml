@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="attendanceExceptionServiceDaoImpl">
+
+    <!-- 根据日期列表查询考勤异常数据 -->
+    <select id="getAttendanceExceptionInfoByDateStr" parameterType="java.util.List" resultType="com.java110.po.attendanceException.AttendanceExceptionDataPo">
+        SELECT `name`, department, `position`, attendance_date attendanceDate, aed.id, aed.type,
+               aed.actual_start_work_time actualStartWorkTime, aed.actual_end_work_time actualEndWorkTime
+        FROM attendance_exception ae
+                 LEFT JOIN attendance_exception_data aed ON aed.exception_id = ae.exception_id
+        WHERE aed.attendance_date in
+        <foreach collection="list" open="(" separator="," close=")" item="date">
+            #{date}
+        </foreach>
+    </select>
+
+    <!-- 根据id列表删除考勤异常数据 -->
+    <delete id="deleteAttendanceExceptionByIds" parameterType="java.util.List">
+        DELETE FROM attendance_exception_data
+        WHERE id IN
+        <foreach collection="list" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </delete>
+
+    <!-- 查询考勤异常信息 -->
+    <select id="getAttendanceExceptionInfo" parameterType="map" resultType="com.java110.po.attendanceException.AttendanceExceptionDataPo">
+        SELECT `name`, department, `position`, attendance_date attendanceDate, aed.id, aed.type,
+               aed.actual_start_work_time actualStartWorkTime, aed.actual_end_work_time actualEndWorkTime
+        FROM attendance_exception ae
+        LEFT JOIN attendance_exception_data aed ON aed.exception_id = ae.exception_id
+        WHERE ae.attendance_month = #{attendanceMonth}
+    </select>
+
+    <!-- 考勤异常 - 修改类型 -->
+    <update id="modifyAttendanceExceptionDataType" parameterType="map">
+        UPDATE attendance_exception_data
+        SET `type` = #{type}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 核实考勤异常 -->
+    <update id="verifyAttendanceException" parameterType="map">
+        UPDATE attendance_exception
+        SET is_verify = #{verifyCode}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 查询考勤异常列表 -->
+    <resultMap id="attendanceExceptions" type="com.java110.vo.api.attendanceException.ApiAttendanceExceptionDataVo">
+        <id property="id" column="id"/>
+        <result property="department" column="department"/>
+        <result property="position" column="position"/>
+        <result property="name" column="name"/>
+        <result property="attendanceMonth" column="attendanceMonth"/>
+        <result property="isVerify" column="isVerify"/>
+        <collection property="exceptionData" ofType="com.java110.vo.api.attendanceException.AttendanceExceptionDetail">
+            <id property="exceptionDataId" column="exceptionDataId"/>
+            <result property="attendanceDate" column="attendanceDate"/>
+            <result property="actualStartWorkTime" column="actualStartWorkTime"/>
+            <result property="actualEndWorkTime" column="actualEndWorkTime"/>
+            <result property="type" column="type"/>
+        </collection>
+    </resultMap>
+    <select id="listAttendanceExceptions" parameterType="com.java110.dto.attendance.AttendanceExceptionDto" resultMap="attendanceExceptions">
+        SELECT ae.exception_id id, ae.department, ae.position, ae.`name`, DATE_FORMAT(ae.attendance_month, '%Y年%c月') attendanceMonth, ae.is_verify isVerify,
+               aed.id exceptionDataId, aed.attendance_date attendanceDate, aed.type,
+               DATE_FORMAT(aed.actual_start_work_time, '%H:%i') actualStartWorkTime,
+               DATE_FORMAT(aed.actual_end_work_time, '%H:%i') actualEndWorkTime
+        FROM attendance_exception ae
+        LEFT JOIN attendance_exception_data aed ON aed.exception_id = ae.exception_id
+        WHERE ae.id IN (
+            SELECT temp.id
+            FROM (
+                SELECT ae.exception_id id
+                FROM attendance_exception ae
+                LEFT JOIN attendance_exception_data aed ON aed.exception_id = ae.exception_id
+                <where>
+                    aed.attendance_date IS NOT NULL
+                    <if test="range != null and range.size > 0">
+                        AND ae.attendance_month IN
+                        <foreach collection="range" item="item" open="(" close=")" separator=",">
+                            #{item}
+                        </foreach>
+                    </if>
+                    <if test="position != null and position != ''">
+                        AND ae.position LIKE concat('%',#{position},'%')
+                    </if>
+                    <if test="department != null and department != ''">
+                        AND ae.department LIKE concat('%',#{department},'%')
+                    </if>
+                    <if test="name != null and name != ''">
+                        AND ae.`name` LIKE concat('%',#{name},'%')
+                    </if>
+                    <if test="isVerify != null">
+                        AND ae.is_verify = #{isVerify}
+                    </if>
+                </where>
+                GROUP BY ae.exception_id
+                ORDER BY ae.attendance_month DESC, ae.exception_id
+                <if test="page != -1 and page != null ">
+                    limit #{page}, #{row}
+                </if>
+            ) AS temp
+        )
+    </select>
+
+    <!-- 查询考勤异常列表数量 -->
+    <select id="queryAttendanceExceptionsCount" parameterType="com.java110.dto.attendance.AttendanceExceptionDto" resultType="int">
+        SELECT COUNT(*) count
+        FROM (
+            SELECT ae.exception_id
+            FROM attendance_exception ae
+            LEFT JOIN attendance_exception_data aed ON aed.exception_id = ae.exception_id
+            <where>
+                aed.attendance_date IS NOT NULL
+                <if test="range != null and range.size > 0">
+                    AND ae.attendance_month IN
+                    <foreach collection="range" item="item" open="(" close=")" separator=",">
+                       #{item}
+                    </foreach>
+                </if>
+                <if test="position != null and position != ''">
+                    AND ae.position LIKE concat('%',#{position},'%')
+                </if>
+                <if test="department != null and department != ''">
+                    AND ae.department LIKE concat('%',#{department},'%')
+                </if>
+                <if test="name != null and name != ''">
+                    AND ae.`name` LIKE concat('%',#{name},'%')
+                </if>
+                <if test="isVerify != null">
+                    AND ae.is_verify = #{isVerify}
+                </if>
+            </where>
+            GROUP BY ae.exception_id
+        ) AS temp
+    </select>
+
+    <!-- 批量插入考勤异常数据 -->
+    <insert id="insertAttendanceExceptionDataBatch" parameterType="java.util.List">
+        INSERT INTO attendance_exception_data(attendance_date,actual_start_work_time,actual_end_work_time,type,exception_id)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.attendanceDate},#{item.actualStartWorkTime},#{item.actualEndWorkTime},#{item.type},#{item.exceptionId})
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+        actual_start_work_time = VALUES(actual_start_work_time),
+        actual_end_work_time = VALUES(actual_end_work_time),
+        type = VALUES(type)
+    </insert>
+
+    <!-- 插入更新考勤异常员工基本信息表数据 -->
+    <insert id="upsertAttendanceExceptionBatch" parameterType="java.util.Set">
+        INSERT INTO attendance_exception(exception_id ,department, `name`, attendance_month, is_verify)
+        VALUES
+        <foreach collection="collection" item="item" separator=",">
+            (#{item.exceptionId},#{item.department}, #{item.name}, #{item.attendanceMonth}, #{item.isVerify})
+        </foreach>
+        ON DUPLICATE KEY UPDATE is_verify = '0';
+    </insert>
+
+    <!-- 根据姓名、部门、职位和考勤月份查询exceptionId -->
+    <select id="getExceptionIdByNameAndDepartmentAndPositionAndAttendanceMonth" parameterType="map" resultType="string">
+        SELECT id exceptionId
+        FROM attendance_exception
+        WHERE `name` = #{name}
+          AND department = #{department}
+          AND attendance_month = #{attendanceMonth}
+        <!--<if test="position != null and position != ''">
+            AND position = #{position}
+        </if>-->
+    </select>
+
+</mapper>

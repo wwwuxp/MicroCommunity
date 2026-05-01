@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="attendanceFileServiceDaoImpl">
+
+    <!-- 根据姓名、部门、职位和考勤日期判断当天是否在休假或调休 -->
+    <select id="isVacationOrRest" parameterType="com.java110.dto.attendance.UserInfoDto" resultType="java.lang.Integer">
+        SELECT 1
+        FROM ${tableName}
+        WHERE status_cd = '0'
+          AND `name` = #{name}
+          AND department = #{department}
+          <if test="attendanceDate != null and attendanceDate != ''">
+              <![CDATA[AND start_time <= #{attendanceDate}]]>
+              <![CDATA[AND end_time >= #{attendanceDate}]]>
+          </if>
+          <if test="fixedStartWorkDateTime != null and fixedStartWorkDateTime != ''">
+              <![CDATA[AND start_time <= #{fixedStartWorkDateTime}]]>
+          </if>
+          <if test="fixedEndWorkDateTime !=null and fixedEndWorkDateTime != ''">
+              <![CDATA[AND end_time >= #{fixedEndWorkDateTime}]]>
+          </if>
+        LIMIT 1
+    </select>
+
+    <!-- 根据姓名、部门、职位和考勤日期获取休假数据 -->
+    <select id="listVacationOrRestTimesByUserInfo" parameterType="com.java110.dto.attendance.UserInfoDto" resultType="com.java110.dto.attendance.AttendanceFileDto">
+        SELECT start_time startTime, end_time endTime
+        FROM ${tableName}
+        WHERE status_cd = '0'
+          AND `name` = #{name}
+          AND department = #{department}
+          AND (DATE_FORMAT(start_time,'%Y-%m-%d') = #{attendanceDate} OR DATE_FORMAT(end_time,'%Y-%m-%d') = #{attendanceDate})
+    </select>
+
+    <!-- 根据姓名、部门、职位和考勤日期获取休假数据  (包含在提供的日期中即查出那条休假数据) -->
+    <select id="listVacationAndRestTimesByUserInfo" parameterType="com.java110.dto.attendance.UserInfoDto" resultType="com.java110.dto.attendance.AttendanceFileDto">
+        SELECT start_time startTime, end_time endTime
+        FROM ${tableName}
+        WHERE status_cd = '0'
+          AND `name` = #{name}
+          AND department = #{department}
+          AND <![CDATA[(DATE_FORMAT(start_time,'%Y-%m-%d') <= #{attendanceDate} AND DATE_FORMAT(end_time,'%Y-%m-%d') >= #{attendanceDate}) ]]>
+    </select>
+
+
+    <!-- 根据文件id删除文件数据 -->
+    <update id="deleteAttendanceFileDataByFileId" parameterType="map">
+        UPDATE ${tableName} SET status_cd = '1'
+        WHERE file_id = #{fileId}
+    </update>
+
+    <!-- 根据文件id删除文件 -->
+    <update id="deleteAttendanceFileById" parameterType="map">
+        UPDATE attendance_file SET status_cd = '1'
+        WHERE id = #{id}
+    </update>
+
+    <!-- 查询导入文件列表 -->
+    <select id="listAttendanceFiles" parameterType="com.java110.dto.attendance.AttendanceFileDto" resultType="com.java110.vo.api.attendanceFile.ApiAttendanceFileDataVo">
+        SELECT f.id, f.file_name fileName, DATE_FORMAT(f.file_time, '%Y年%c月') fileTime, f.data_type dataType, f.import_time importTime, u.name uploader
+        FROM attendance_file f
+        LEFT JOIN u_user u ON u.user_id = f.user_id AND u.status_cd = '0'
+        WHERE f.status_cd = '0'
+        <if test="fileName != null and fileName != ''">
+            AND f.file_name LIKE concat('%', #{fileName}, '%')
+        </if>
+        <if test="fileTime != null">
+            AND f.file_time = #{fileTime}
+        </if>
+        <if test="dataType != null">
+            AND f.data_type = #{dataType}
+        </if>
+        <if test="uploader != null and uploader != ''">
+            AND u.name LIKE concat('%', #{name}, '%')
+        </if>
+        ORDER BY f.create_time DESC
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 查询导入文件列表数量 -->
+    <select id="queryAttendanceFilesCount" parameterType="com.java110.dto.attendance.AttendanceFileDto" resultType="int">
+        SELECT COUNT(DISTINCT f.id) count
+        FROM attendance_file f
+        LEFT JOIN u_user u ON u.user_id = f.user_id AND u.status_cd = '0'
+        WHERE f.status_cd = '0'
+        <if test="fileName != null and fileName != ''">
+            AND f.file_name LIKE concat('%', #{fileName}, '%')
+        </if>
+        <if test="fileTime != null">
+            AND f.file_time = #{fileTime}
+        </if>
+        <if test="dataType != null">
+            AND f.data_type = #{dataType}
+        </if>
+        <if test="uploader != null and uploader != ''">
+            AND u.name LIKE concat('%', #{uploader}, '%')
+        </if>
+    </select>
+
+</mapper>

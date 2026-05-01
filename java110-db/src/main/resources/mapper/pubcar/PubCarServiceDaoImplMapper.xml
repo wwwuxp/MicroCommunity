@@ -1,0 +1,555 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubCarServiceDaoImpl">
+
+    <!-- 查询空闲车辆id -->
+    <select id="listEmptyCarInfos" parameterType="java.util.List" resultType="com.java110.vo.api.pubCar.ApiSimplePubCarDataVo">
+        SELECT car_id carId, license, brand, model, key_cabinet keyCabinet
+        FROM pubcar_car
+        WHERE status_cd = '0' AND car_type1 = #{carType}
+        <if test="notEmptyCarIds != null and notEmptyCarIds.size > 0">
+            AND car_id NOT IN
+            <foreach collection="notEmptyCarIds" item="item" open="(" close=")" separator=",">
+                #{item}
+            </foreach>
+        </if>
+    </select>
+
+    <!-- 查询时间段内忙的车id -->
+    <select id="listNotEmptyCars" parameterType="map" resultType="com.java110.dto.pubCar.PubCarDto">
+        SELECT pc.car_id carId, pc.key_cabinet keyCabinet, pc.key_status keyStatus, pt.start_time startTime, pt.end_time endTime, pt.user_id applicantId
+        FROM pubcar_trip pt
+        LEFT JOIN pubcar_trip_car_num ptcn ON ptcn.trip_id = pt.trip_id AND ptcn.status_cd = '0'
+        LEFT JOIN pubcar_car pc ON pc.car_id = ptcn.car_id
+        WHERE ((<![CDATA[pt.start_time <= #{startTime}]]> AND pt.end_time >= #{startTime})
+            OR (<![CDATA[pt.start_time <= #{endTime}]]> AND pt.end_time >= #{endTime})
+            OR (pt.start_time > #{startTime} AND <![CDATA[pt.end_time < #{endTime}]]>))
+            AND ptcn.car_id IS NOT NULL
+            AND <![CDATA[pt.trip_status <> 3]]>
+            AND <![CDATA[pt.approval_status <> 1]]>
+            AND pt.status_cd = '0'
+            AND pc.status_cd = '0'
+            AND pc.car_type1 = #{carType}
+        UNION ALL
+        SELECT car_id carId, NULL keyCabinet, NULL keyStatus, NULL startTime, NULL endTime, NULL applicantId
+        FROM pubcar_car
+        WHERE status_cd = '0' AND key_status = 2 AND car_type1 = #{carType}
+    </select>
+
+    <!-- 是否已经存在相同车牌号，钥匙柜编号的车了 -->
+    <select id="existPubCar" parameterType="com.java110.dto.pubCar.ExistPubCarDto" resultType="com.java110.dto.pubCar.ExistPubCarDto">
+        SELECT car_id carId, license, key_cabinet keyCabinet
+        FROM pubcar_car
+        WHERE (license = #{license} OR key_cabinet = #{keyCabinet}) AND sn_id = #{snId}
+          AND community_id = #{communityId}
+          AND status_cd = '0'
+        <if test="carId != null and carId != ''">
+            <![CDATA[AND car_id <> #{carId}]]>
+        </if>
+        LIMIT 1;
+    </select>
+
+    <!-- 查询车辆档案列表 -->
+    <resultMap id="archiveInfo" type="com.java110.vo.api.pubCarArchives.ApiPubCarArchivesDataVo">
+        <id property="carId" column="carId"/>
+        <result property="license" column="license"/>
+        <result property="color" column="color"/>
+        <result property="brand" column="brand"/>
+        <result property="model" column="model"/>
+        <result property="frameNum" column="frameNum"/>
+        <result property="engineNum" column="engineNum"/>
+        <result property="registerDate" column="registerDate"/>
+        <result property="totalMileage" column="totalMileage"/>
+        <result property="orderMileage" column="orderMileage"/>
+        <result property="totalDrivingTime" column="totalDrivingTime"/>
+        <result property="orderNum" column="orderNum"/>
+        <result property="insuranceCompany" column="insuranceCompany"/>
+        <result property="insuranceExpirationDate" column="insuranceExpirationDate"/>
+        <result property="quarterReview" column="quarterReview"/>
+        <result property="quarterReviewContent" column="quarterReviewContent"/>
+        <result property="yearReview" column="yearReview"/>
+        <result property="yearReviewContent" column="yearReviewContent"/>
+        <result property="maintenanceExpirationDate" column="maintenanceExpirationDate"/>
+        <result property="maintenanceFee" column="maintenanceFee"/>
+        <result property="mileage" column="mileage"/>
+        <collection property="violations" ofType="com.java110.vo.api.pubCarViolation.ApiSimplePubCarViolationDataVo">
+            <id property="violationId" column="violationId"/>
+            <result property="violationDate" column="violationDate"/>
+            <result property="violationAddress" column="violationAddress"/>
+            <result property="violationContent" column="violationContent"/>
+            <result property="deduction" column="deduction"/>
+            <result property="fine" column="fine"/>
+        </collection>
+        <collection property="repairs" ofType="com.java110.vo.api.pubCarRepair.ApiPubCarRepairDataVo">
+            <id property="repairId" column="repairId"/>
+            <result property="repairDate" column="repairDate"/>
+            <result property="repairContent" column="repairContent"/>
+            <result property="repairPrice" column="repairPrice"/>
+            <result property="declarant" column="declarant"/>
+        </collection>
+    </resultMap>
+    <select id="queryPubCarArchives" parameterType="com.java110.dto.pubCar.PubCarDto" resultMap="archiveInfo">
+        SELECT c.car_id carId, c.license, c.color, c.brand, c.model, a.frame_num frameNum, a.engine_num engineNum, a.register_date registerDate,
+               (CASE WHEN g.totalMileage IS NULL THEN 0 ELSE g.totalMileage END) totalMileage,
+               (CASE WHEN g.orderMileage IS NULL THEN 0 ELSE g.orderMileage END) orderMileage,
+               (CASE WHEN g.totalDrivingTime IS NULL THEN 0 ELSE g.totalDrivingTime END) totalDrivingTime, g.orderNum,
+               i.insurance_company insuranceCompany, i.insurance_expiration_date insuranceExpirationDate,
+               i.quarter_review quarterReview, i.quarter_review_content quarterReviewContent, i.year_review yearReview, i.year_review_content yearReviewContent,
+               i.maintenance_expiration_date maintenanceExpirationDate, i.maintenance_fee maintenanceFee, i.mileage,
+               v.violation_id violationId, v.date violationDate, v.address violationAddress, v.content violationContent, v.deduction, v.fine,
+               r.repair_id repairId, r.date repairDate, r.content repairContent, r.price repairPrice, r.declarant
+        FROM pubcar_car c
+        LEFT JOIN pubcar_car_attr a ON a.attr_id = c.attr_id
+        LEFT JOIN pubcar_car_insurance i ON i.insurance_id = c.insurance_id
+        LEFT JOIN (
+            SELECT n.car_id, MAX(m.end_mileage) totalMileage, SUM(m.pass_mileage) orderMileage, SUM(m.duration) totalDrivingTime, COUNT(m.mileage_id) orderNum
+            FROM pubcar_trip_mileage m
+            INNER JOIN pubcar_trip_car_num n ON n.driver_id = m.driver_id AND n.trip_id = m.trip_id
+            GROUP BY n.car_id
+        ) g ON g.car_id = c.car_id
+        LEFT JOIN pubcar_car_violation v ON v.car_id = c.car_id
+        LEFT JOIN pubcar_car_repair r ON r.car_id = c.car_id
+        WHERE c.status_cd = '0'
+        AND c.car_id IN (
+            SELECT temp.id
+            FROM(
+                SELECT car_id id
+                FROM pubcar_car
+                WHERE status_cd = '0'
+                <if test="license != null and license != ''">
+                    and license like concat('%',#{license},'%')
+                </if>
+                <if test="communityId != null and communityId != ''">
+                    and community_id = #{communityId}
+                </if>
+                <if test="page != -1 and page != null ">
+                    limit #{page}, #{row}
+                </if>
+            ) AS temp
+        )
+    </select>
+
+    <!-- 查询车辆档案列表数量 -->
+    <select id="queryPubCarArchivesCount" parameterType="com.java110.dto.pubCar.PubCarDto" resultType="map">
+        SELECT COUNT(DISTINCT c.car_id) count
+        FROM pubcar_car c
+        LEFT JOIN pubcar_car_attr a ON a.attr_id = c.attr_id
+        LEFT JOIN pubcar_car_insurance i ON i.insurance_id = c.insurance_id
+        LEFT JOIN pubcar_trip_car_num n ON n.car_id = c.car_id
+        LEFT JOIN pubcar_trip_mileage m ON m.driver_id = n.driver_id AND m.trip_id = n.trip_id
+        LEFT JOIN pubcar_car_violation v ON v.car_id = c.car_id
+        LEFT JOIN pubcar_car_repair r ON r.car_id = c.car_id
+        WHERE c.status_cd = '0'
+        <if test="license != null and license != ''">
+            and c.license like concat('%',#{license},'%')
+        </if>
+        <if test="communityId != null and communityId != ''">
+            and c.community_id = #{communityId}
+        </if>
+    </select>
+
+    <!-- 查询车辆统计列表 -->
+    <select id="queryCarStatistics" parameterType="com.java110.dto.pubCar.PubCarDto" resultType="com.java110.vo.api.pubCar.ApiCarStatisticsDataVo">
+        SELECT c.car_id carId, c.license, c.brand, c.model, c.asset_num assetNum, c.seat_num seatNum, o.org_name department,
+                (CASE WHEN g.totalMileage IS NULL THEN 0 ELSE g.totalMileage END) totalMileage,
+                (CASE WHEN g.orderMileage IS NULL THEN 0 ELSE g.orderMileage END) orderMileage,
+                (CASE WHEN g.totalDrivingTime IS NULL THEN 0 ELSE g.totalDrivingTime END) totalDrivingTime,
+                (CASE WHEN g.tripNum IS NULL THEN 0 ELSE g.tripNum END) tripNum
+        FROM pubcar_car c
+        LEFT JOIN (
+            SELECT m.trip_id, m.driver_id, n.car_id,
+                    MAX(m.end_mileage) totalMileage, SUM(m.pass_mileage) orderMileage, SUM(m.duration) totalDrivingTime,
+                    COUNT(DISTINCT m.trip_id) tripNum
+            FROM pubcar_trip_mileage m
+            LEFT JOIN pubcar_trip_car_num n ON m.trip_id = n.trip_id AND m.driver_id = n.driver_id
+            WHERE m.status_cd = '0' AND n.status_cd = '0'
+            <if test="startTime !=null">
+                <![CDATA[AND m.start_time >= #{startTime}]]>
+            </if>
+            <if test="endTime !=null">
+                <![CDATA[AND m.end_time <= #{endTime}]]>
+            </if>
+            GROUP BY n.car_id
+        ) g ON g.car_id = c.car_id
+        LEFT JOIN u_org o ON o.org_id = c.department_id
+        WHERE c.status_cd = '0'
+        <if test="license != null and license != ''">
+            and c.license like concat('%',#{license},'%')
+        </if>
+        <if test="brand != null and brand != ''">
+            and c.brand like concat('%',#{brand},'%')
+        </if>
+        <if test="model != null and model != ''">
+            and c.model like concat('%',#{model},'%')
+        </if>
+        <if test="assetNum != null and assetNum != ''">
+            and c.asset_num like concat('%',#{assetNum},'%')
+        </if>
+        <if test="departmentId != null and departmentId != ''">
+            and c.department_id = #{departmentId}
+        </if>
+        <if test="communityId != null and communityId != ''">
+            and c.community_id = #{communityId}
+        </if>
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 查询车辆统计列表数量 -->
+    <select id="queryCarStatisticsCount" parameterType="com.java110.dto.pubCar.PubCarDto" resultType="map">
+        SELECT COUNT(DISTINCT c.car_id) count
+        FROM pubcar_car c
+        LEFT JOIN pubcar_trip_car_num n ON n.car_id = c.car_id
+        LEFT JOIN pubcar_trip_mileage m ON m.trip_id = n.trip_id AND m.driver_id = n.driver_id
+        WHERE c.status_cd = '0'
+        <if test="license != null and license != ''">
+            and c.license like concat('%',#{license},'%')
+        </if>
+        <if test="brand != null and brand != ''">
+            and c.brand like concat('%',#{brand},'%')
+        </if>
+        <if test="model != null and model != ''">
+            and c.model like concat('%',#{model},'%')
+        </if>
+        <if test="assetNum != null and assetNum != ''">
+            and c.asset_num like concat('%',#{assetNum},'%')
+        </if>
+        <if test="departmentId != null and departmentId != ''">
+            and c.department_id = #{departmentId}
+        </if>
+        <if test="communityId != null and communityId != ''">
+            and c.community_id = #{communityId}
+        </if>
+    </select>
+
+    <!-- 查询公车部分信息  color, license, seat_num seatNum,-->
+    <select id="querySimplePubCars" parameterType="map" resultType="com.java110.vo.api.pubCar.ApiSimplePubCarDataVo">
+        select car_id carId, license, brand, model, key_cabinet keyCabinet,
+        CASE car_type
+        WHEN 1 THEN '7座以下小客车'
+        WHEN 2 THEN '7座（含）以上小客车'
+        WHEN 3 THEN '货车'
+        WHEN 4 THEN '摩托车'
+        WHEN 5 THEN '其它机动车'
+        ELSE '其它' END carTypeName
+        from pubcar_car
+        where status_cd = 0 AND community_id = #{communityId}
+        <if test="carIds != null and carIds.size > 0">
+            AND car_id IN
+            <foreach collection="carIds" item="item" open="(" close=")" separator=",">
+                #{item}
+            </foreach>
+        </if>
+    </select>
+    <!-- 查询空闲车辆 -->
+    <select id="getCarReturnAndReserveInfo" parameterType="java.util.List" resultType="com.java110.vo.api.pubCar.ApiSimplePubCarDataVo">
+        SELECT pc.car_id carId, MAX(ptm.end_time) returnTime, MIN(pt.start_time) reserveTime
+        FROM pubcar_car pc
+        LEFT JOIN pubcar_trip_car_num ptcn ON ptcn.car_id = pc.car_id AND ptcn.status_cd = '0'
+        LEFT JOIN pubcar_trip_mileage ptm ON ptm.trip_id = ptcn.trip_id AND ptm.driver_id = ptcn.driver_id AND ptm.status_cd = '0'
+        LEFT JOIN pubcar_trip pt ON pt.trip_id = ptcn.trip_id
+                                        AND pt.status_cd = '0'
+                                        AND pt.approval_status = 3
+                                        AND (pt.trip_status = 1 OR pt.trip_status = 3)
+                                        AND pt.start_time >= DATE_SUB(NOW(),INTERVAL 1 day)
+                                        AND pt.end_time > NOW()
+        WHERE pc.car_id IN
+        <foreach collection="list" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+        GROUP BY pc.car_id
+    </select>
+
+    <!--保存数据到business_pubcar_car表-->
+    <insert id="saveBusinessPubCarInfo" parameterType="Map">
+        insert into business_pubcar_car(color, remark, car_id, license, seat_num, car_type, car_type1, sn_id, key_cabinet, card_number,
+                                        attr_id, asset_num, insurance_id, model, department_id, community_id, brand, b_id, operate)
+        values (#{color}, #{remark}, #{carId}, #{license}, #{seatNum}, #{carType}, #{carType1}, #{snId}, #{keyCabinet}, #{cardNumber}, #{attrId}, #{assetNum},
+                #{insuranceId}, #{model}, #{departmentId}, #{communityId}, #{brand}, #{carBId}, #{operate})
+    </insert>
+
+    <!-- 查询车辆管理表信息 add by hh -->
+    <select id="getBusinessPubCarInfo" parameterType="Map" resultType="Map">
+        SELECT c.b_id carBId,c.car_id carId,c.license,c.brand,c.model,c.color,c.seat_num seatNum,c.car_type carType,c.department_id departmentId,c.remark,c.asset_num assetNum,c.attr_id attrId,c.insurance_id insuranceId,c.community_id communityId,
+               a.b_id attrBId,a.register_date registerDate,a.engine_num engineNum,a.frame_num frameNum,a.accident_situation accidentSituation,a.group_id groupId,
+               i.b_id insuranceBId,i.quarter_review quarterReview,i.year_review yearReview,i.insurance_expiration_date insuranceExpirationDate,i.maintenance_expiration_date maintenanceExpirationDate,i.insurance_company insuranceCompany,
+               i.quarter_review_content quarterReviewContent, i.year_review_content yearReviewContent, i.maintenance_fee maintenanceFee, i.mileage,
+               c.key_cabinet keyCabinet, c.card_number cardNumber, c.sn_id snId, c.car_type1 carType1
+        FROM business_pubcar_car c
+        LEFT JOIN business_pubcar_car_attr a ON a.attr_id = c.attr_id
+        LEFT JOIN business_pubcar_car_insurance i ON i.insurance_id = c.insurance_id
+        <where>
+            <if test="operate != null and operate != ''">
+                c.operate = #{operate}
+            </if>
+            <if test="carBId != null and carBId != ''">
+                and c.b_id = #{carBId}
+            </if>
+        </where>
+        ORDER BY a.seq DESC,i.seq DESC
+        LIMIT 1
+    </select>
+
+    <!-- 保存车辆管理表信息 add by hh -->
+    <insert id="savePubCarInfo" parameterType="Map">
+        insert into pubcar_car(
+        color, remark, car_id, license, seat_num, car_type, car_type1, sn_id, key_cabinet, card_number,
+        attr_id, asset_num, insurance_id,model, department_id, community_id, brand, b_id, status_cd
+        )
+        select t.color,t.remark,t.car_id,t.license,t.seat_num,t.car_type, t.car_type1, t.sn_id,t.key_cabinet,t.card_number,t.attr_id,
+               t.asset_num,t.insurance_id,t.model,t.department_id,t.community_id, t.brand, t.b_id, '0'
+        from business_pubcar_car t
+        where t.operate= 'ADD'
+        <if test="carBId !=null and carBId != ''">
+            and t.b_id= #{carBId}
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            and t.community_id= #{communityId}
+        </if>
+        <if test="userId !=null and userId != ''">
+            and t.user_id= #{userId}
+        </if>
+    </insert>
+
+
+    <!-- 查询车辆管理表信息 add by hh -->
+    <select id="getPubCarInfo" parameterType="Map" resultType="Map">
+        SELECT  t.car_id carId,t.`license`,t.brand,t.model,t.color,t.seat_num seatNum,t.car_type carType,uo.org_name departmentName,t.remark,t.asset_num assetNum,t.attr_id attrId,t.insurance_id insuranceId,t.community_id communityId,
+                a.register_date registerDate,a.engine_num engineNum,a.frame_num frameNum,a.accident_situation accidentSituation,a.group_id groupId,
+                i.quarter_review quarterReview,i.year_review yearReview,i.insurance_expiration_date insuranceExpirationDate,i.maintenance_expiration_date maintenanceExpirationDate,i.insurance_company insuranceCompany,
+                i.quarter_review_content quarterReviewContent, i.year_review_content yearReviewContent, i.maintenance_fee maintenanceFee, i.mileage,
+               t.key_cabinet keyCabinet, t.card_number cardNumber, t.sn_id snId, t.car_type1 carType1
+        FROM pubcar_car t
+        LEFT JOIN pubcar_car_attr a ON a.attr_id = t.attr_id
+        LEFT JOIN pubcar_car_insurance i ON i.insurance_id = t.insurance_id
+        LEFT JOIN u_org uo ON uo.org_id = t.department_id AND uo.status_cd = '0'
+        where t.status_cd = '0'
+        <if test="license !=null and license != ''">
+            and t.`license` like concat('%',#{license},'%')
+        </if>
+        <if test="color !=null and color != ''">
+            and t.color like concat('%',#{color},'%')
+        </if>
+        <if test="remark !=null and remark != ''">
+            and t.remark like concat('%',#{remark},'%')
+        </if>
+        <if test="carId !=null and carId != ''">
+            and t.car_id = #{carId}
+        </if>
+        <if test="seatNum !=null and seatNum != ''">
+            and t.seat_num = #{seatNum}
+        </if>
+        <if test="carType !=null and carType != ''">
+            and t.car_type = #{carType}
+        </if>
+        <if test="assetNum !=null and assetNum != ''">
+            and t.asset_num like concat('%',#{assetNum},'%')
+        </if>
+        <if test="model !=null and model != ''">
+            and t.model like concat('%',#{model},'%')
+        </if>
+        <if test="departmentId !=null and departmentId != ''">
+            and t.department_id = #{departmentId}
+        </if>
+        <if test="brand !=null and brand != ''">
+            and t.brand like concat('%',#{brand},'%')
+        </if>
+        <if test="departmentId !=null and departmentId != ''">
+            and t.department_id = #{departmentId}
+        </if>
+        <if test="lessSeatNum !=null and lessSeatNum != ''">
+            <![CDATA[ and t.seat_num >= #{lessSeatNum}]]>
+        </if>
+        <if test="moreSeatNum !=null and moreSeatNum != ''">
+            <![CDATA[ and t.seat_num <= #{moreSeatNum}]]>
+        </if>
+        <if test="registerDate !=null">
+            and t.register_date = #{registerDate}
+        </if>
+        <if test="engineNum !=null and engineNum != ''">
+            and t.engine_num like concat('%',#{engineNum},'%')
+        </if>
+        <if test="frameNum !=null and frameNum != ''">
+            and t.frame_num like concat('%',#{frameNum},'%')
+        </if>
+        <if test="accidentSituation !=null and accidentSituation != ''">
+            and t.accident_situation = #{accidentSituation}
+        </if>
+        <if test="groupId !=null and groupId != ''">
+            and t.group_id = #{groupId}
+        </if>
+        <if test="quarterReview !=null">
+            and t.quarter_review = #{quarterReview}
+        </if>
+        <if test="yearReview !=null">
+            and t.year_review = #{yearReview}
+        </if>
+        <if test="insuranceExpirationDate !=null">
+            and t.insurance_expiration_date = #{insuranceExpirationDate}
+        </if>
+        <if test="maintenanceExpirationDate !=null">
+            and t.maintenance_expiration_date = #{maintenanceExpirationDate}
+        </if>
+        <if test="insuranceCompany !=null">
+            and t.insurance_company = #{insuranceCompany}
+        </if>
+        <if test="bId !=null and bId != ''">
+            and t.b_id = #{bId}
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            and t.community_id = #{communityId}
+        </if>
+        order by t.create_time desc
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+
+    <!-- 修改车辆管理表信息 add by hh -->
+    <update id="updatePubCarInfo" parameterType="Map">
+        update pubcar_car t set t.status_cd = #{statusCd}
+        <if test="newCarBId != null and newCarBId != ''">
+            ,t.b_id = #{newCarBId}
+        </if>
+        <if test="color !=null and color != ''">
+            , t.color= #{color}
+        </if>
+        <if test="remark !=null and remark != ''">
+            , t.remark= #{remark}
+        </if>
+        <if test="license !=null and license != ''">
+            , t.license= #{license}
+        </if>
+        <if test="seatNum !=null">
+            , t.seat_num= #{seatNum}
+        </if>
+        <if test="carType !=null">
+            , t.car_type= #{carType}
+        </if>
+        <if test="snId != null">
+            , t.sn_id = #{snId}
+        </if>
+        <if test="keyCabinet != null and keyCabinet != ''">
+            , t.key_cabinet = #{keyCabinet}
+        </if>
+        <if test="cardNumber != null and cardNumber != ''">
+            , t.card_number = #{cardNumber}
+        </if>
+        <if test="carType1 != null">
+            , t.car_type1 = #{carType1}
+        </if>
+        <if test="assetNum !=null and assetNum != ''">
+            , t.asset_num= #{assetNum}
+        </if>
+        <if test="model !=null and model != ''">
+            , t.model= #{model}
+        </if>
+        <if test="departmentId !=null and departmentId != ''">
+            , t.department_id= #{departmentId}
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            , t.community_id= #{communityId}
+        </if>
+        <if test="brand !=null and brand != ''">
+            , t.brand= #{brand}
+        </if>
+        <where>
+            <if test="carId !=null and carId != ''">
+                t.car_id= #{carId}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+        </where>
+    </update>
+
+    <!-- 查询车辆管理表数量 add by hh -->
+    <select id="queryPubCarsCount" parameterType="Map" resultType="Map">
+        SELECT count(1) count
+        FROM pubcar_car t
+        LEFT JOIN pubcar_car_attr a ON a.attr_id = t.attr_id
+        LEFT JOIN pubcar_car_insurance i ON i.insurance_id = t.insurance_id
+        where t.status_cd = '0'
+        <if test="license !=null and license != ''">
+            and t.`license` like concat('%',#{license},'%')
+        </if>
+        <if test="color !=null and color != ''">
+            and t.color like concat('%',#{color},'%')
+        </if>
+        <if test="remark !=null and remark != ''">
+            and t.remark like concat('%',#{remark},'%')
+        </if>
+        <if test="carId !=null and carId != ''">
+            and t.car_id = #{carId}
+        </if>
+        <if test="seatNum !=null and seatNum != ''">
+            and t.seat_num = #{seatNum}
+        </if>
+        <if test="carType !=null and carType != ''">
+            and t.car_type = #{carType}
+        </if>
+        <if test="assetNum !=null and assetNum != ''">
+            and t.asset_num like concat('%',#{assetNum},'%')
+        </if>
+        <if test="model !=null and model != ''">
+            and t.model like concat('%',#{model},'%')
+        </if>
+        <if test="departmentId !=null and departmentId != ''">
+            and t.department_id = #{departmentId}
+        </if>
+        <if test="brand !=null and brand != ''">
+            and t.brand like concat('%',#{brand},'%')
+        </if>
+        <if test="departmentId !=null and departmentId != ''">
+            and t.department_id = #{departmentId}
+        </if>
+        <if test="lessSeatNum !=null and lessSeatNum != ''">
+            <![CDATA[ and t.seat_num >= #{lessSeatNum}]]>
+        </if>
+        <if test="moreSeatNum !=null and moreSeatNum != ''">
+            <![CDATA[ and t.seat_num <= #{moreSeatNum}]]>
+        </if>
+        <if test="registerDate !=null">
+            and t.register_date = #{registerDate}
+        </if>
+        <if test="engineNum !=null and engineNum != ''">
+            and t.engine_num like concat('%',#{engineNum},'%')
+        </if>
+        <if test="frameNum !=null and frameNum != ''">
+            and t.frame_num like concat('%',#{frameNum},'%')
+        </if>
+        <if test="accidentSituation !=null and accidentSituation != ''">
+            and t.accident_situation = #{accidentSituation}
+        </if>
+        <if test="groupId !=null and groupId != ''">
+            and t.group_id = #{groupId}
+        </if>
+        <if test="quarterReview !=null">
+            and t.quarter_review = #{quarterReview}
+        </if>
+        <if test="yearReview !=null">
+            and t.year_review = #{yearReview}
+        </if>
+        <if test="insuranceExpirationDate !=null">
+            and t.insurance_expiration_date = #{insuranceExpirationDate}
+        </if>
+        <if test="maintenanceExpirationDate !=null">
+            and t.maintenance_expiration_date = #{maintenanceExpirationDate}
+        </if>
+        <if test="insuranceCompany !=null">
+            and t.insurance_company = #{insuranceCompany}
+        </if>
+    </select>
+
+    <!-- 查询车辆管理表数量 add by hh -->
+    <select id="queryInfoByCarId" parameterType="string" resultType="Map">
+        select attr_id attrId, insurance_id insuranceId
+        from pubcar_car
+        where car_id = #{carId}
+    </select>
+
+</mapper>

@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubCarDriverServiceDaoImpl">
+
+    <!-- 是否存在相同司机了 -->
+    <select id="existPubCarDriver" parameterType="com.java110.dto.pubCarDriver.PubCarExistDriverDto" resultType="java.lang.Integer">
+        SELECT 1
+        FROM pubcar_driver
+        WHERE community_id = #{communityId} AND status_cd = '0' AND (tel = #{tel}
+        <if test="jobNum !=null and jobNum != ''">
+            OR job_num = #{jobNum}
+        </if>
+        <if test="staffCarNum !=null and staffCarNum != ''">
+            OR staff_car_num = #{staffCarNum}
+        </if>
+        <if test="idNum !=null and idNum != ''">
+            OR id_num = #{idNum}
+        </if>)
+        <if test="driverId !=null and driverId != ''">
+            <![CDATA[AND driver_id <> #{driverId}]]>
+        </if>
+        LIMIT 1;
+    </select>
+
+    <!-- 司机用车统计 -->
+    <select id="getPubCarDriverStatisticsInfo" parameterType="com.java110.dto.pubCarDriver.PubCarDriverDto" resultType="com.java110.vo.api.pubCarTripDriver.ApiPubCarDriverDataVo">
+        SELECT t.driver_id driverId, t.name, t.gender, o.org_name department, d.name position, t.tel, t.job_num jobNum,
+                (CASE WHEN m.mileage IS NULL THEN 0 ELSE m.mileage END) mileage,
+                (CASE WHEN m.duration IS NULL THEN 0 ELSE m.duration END) duration,
+                (CASE WHEN m.tripNum IS NULL THEN 0 ELSE  m.tripNum END) tripNum
+        FROM pubcar_driver t
+        LEFT JOIN u_org o on o.org_id = t.department_id
+        LEFT JOIN t_dict d ON d.status_cd = t.position_id AND d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd'
+        LEFT JOIN (
+            SELECT driver_id, SUM(pass_mileage) mileage, SUM(duration) duration, COUNT(mileage_id) tripNum
+            FROM pubcar_trip_mileage
+            <where>
+                <if test="startTime !=null">
+                    <![CDATA[start_time >= #{startTime}]]>
+                </if>
+                <if test="endTime !=null">
+                    <![CDATA[AND end_time <= #{endTime}]]>
+                </if>
+            </where>
+            GROUP BY driver_id
+        ) m ON m.driver_id = t.driver_id
+        WHERE t.status_cd = '0'
+        <if test="name !=null and name != ''">
+            AND t.name like concat('%',#{name},'%')
+        </if>
+        <if test="jobNum !=null and jobNum != ''">
+            and t.job_num like concat('%',#{jobNum},'%')
+        </if>
+        <if test="tel !=null and tel != ''">
+            and t.tel like concat('%',#{tel},'%')
+        </if>
+        <if test="position !=null and position != ''">
+            and d.name like concat('%',#{position},'%')
+        </if>
+        <if test="department !=null and department != ''">
+            and o.org_name like concat('%',#{department},'%')
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            and t.community_id= #{communityId}
+        </if>
+        order by t.create_time ASC
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 查询司机名字 -->
+    <select id="queryPubCarDriverNames" resultType="com.java110.vo.api.pubCarTripDriver.ApiPubCarSimpleDriverDataVo">
+        select driver_id driverId, `name`
+        from pubcar_driver
+        where status_cd = '0'
+    </select>
+
+    <select id="queryPubCarDriversByValidateCondition" parameterType="string" resultType="string">
+        select driver_id
+        from pubcar_driver
+        where job_num = #{jobNum} and status_cd = '0'
+        limit 1
+    </select>
+
+    <!-- 获取司机业务表信息 add by hh -->
+    <select id="getBusinessPubCarDriverInfo" parameterType="Map" resultType="Map">
+        select u.b_id bId, u.driver_id driverId, u.name, u.gender, u.department_id departmentId, u.position_id positionId, u.tel, u.job_num jobNum, u.staff_car_num staffCarNum,
+               u.id_num idNum, u.education, u.remark, u.group_id groupId, u.portrait, u.community_id communityId
+        from business_pubcar_driver u
+        <where>
+            <if test="bId !=null and bId != ''">
+                u.b_id = #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and u.operate = #{operate}
+            </if>
+        </where>
+    </select>
+
+    <!-- 保存司机业务表信息 add by hh -->
+    <insert id="saveBusinessPubCarDriverInfo" parameterType="Map">
+        insert into business_pubcar_driver(b_id, driver_id, name, password, gender, department_id, position_id, tel, job_num, staff_car_num,
+                                         id_num, education, remark, group_id, portrait, operate, community_id)
+        values (#{bId}, #{driverId}, #{name}, #{password}, #{gender}, #{departmentId}, #{positionId}, #{tel}, #{jobNum},
+                #{staffCarNum}, #{idNum}, #{education}, #{remark}, #{groupId}, #{portrait}, #{operate}, #{communityId})
+    </insert>
+
+    <!-- 保存司机管理表信息 add by hh -->
+    <insert id="savePubCarDriverInfo" parameterType="Map">
+        insert into pubcar_driver(driver_id, name, password, gender, department_id, position_id, tel, job_num, staff_car_num, id_num,
+                            education, remark, group_id, portrait, b_id, status_cd, community_id)
+        select t.driver_id, t.name, t.password, t.gender, t.department_id, t.position_id, t.tel, t.job_num, t.staff_car_num, t.id_num,
+               t.education, t.remark, t.group_id, t.portrait, t.b_id, '0', t.community_id
+        from business_pubcar_driver t
+        <where>
+            <if test="bId !=null and bId != ''">
+                t.b_id= #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and t.operate= #{operate}
+            </if>
+        </where>
+    </insert>
+
+    <!-- 查询司机管理表信息 add by hh -->
+    <select id="queryPubCarDrivers" parameterType="com.java110.dto.pubCarDriver.PubCarDriverDto" resultType="com.java110.vo.api.pubCarTripDriver.ApiPubCarDriverDataVo">
+        select t.driver_id driverId,t.name,t.gender,t.department_id departmentId,t.position_id positionId,t.tel,t.job_num jobNum,
+        t.staff_car_num staffCarNum,t.id_num idNum,t.education,t.remark,t.group_id groupId,t.portrait,t.community_id communityId
+        from pubcar_driver t
+        <where>
+            <if test="driverId !=null and driverId != ''">
+                t.driver_id= #{driverId}
+            </if>
+            <if test="jobNum !=null and jobNum != ''">
+                and t.job_num like concat('%',#{jobNum},'%')
+            </if>
+            <if test="gender !=null">
+                and t.gender= #{gender}
+            </if>
+            <if test="statusCd !=null and statusCd != ''">
+                and t.status_cd= #{statusCd}
+            </if>
+            <if test="password !=null and password != ''">
+                and t.password= #{password}
+            </if>
+            <if test="name !=null and name != ''">
+                and t.name like concat('%',#{name},'%')
+            </if>
+            <if test="tel !=null and tel != ''">
+                and t.tel like concat('%',#{tel},'%')
+            </if>
+            <if test="departmentId !=null and departmentId != ''">
+                and t.department_id= #{departmentId}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+            <if test="communityId !=null and communityId != ''">
+                and t.community_id= #{communityId}
+            </if>
+            order by t.create_time DESC
+            <if test="page != -1 and page != null ">
+                limit #{page}, #{row}
+            </if>
+        </where>
+    </select>
+
+    <!-- 修改司机管理表信息 add by hh -->
+    <update id="updatePubCarDriverInfo" parameterType="Map">
+        update pubcar_driver t set t.status_cd = #{statusCd}
+        <if test="newBId != null and newBId != ''">
+            ,t.b_id = #{newBId}
+        </if>
+        <if test="name !=null and name != ''">
+            , t.name= #{name}
+        </if>
+        <if test="password !=null and password != ''">
+            , t.password= #{password}
+        </if>
+        <if test="gender !=null and gender != ''">
+            , t.gender= #{gender}
+        </if>
+        <if test="departmentId !=null and departmentId != ''">
+            , t.department_id= #{departmentId}
+        </if>
+        <if test="positionId !=null and positionId != ''">
+            , t.position_id= #{positionId}
+        </if>
+        <if test="tel !=null and tel != ''">
+            , t.tel= #{tel}
+        </if>
+        <if test="jobNum !=null and jobNum != ''">
+            , t.job_num= #{jobNum}
+        </if>
+        <if test="staffCarNum !=null and staffCarNum != ''">
+            , t.staff_car_num= #{staffCarNum}
+        </if>
+        <if test="idNum !=null and idNum != ''">
+            , t.id_num= #{idNum}
+        </if>
+        <if test="education !=null and education != ''">
+            , t.education= #{education}
+        </if>
+        <if test="remark !=null and remark != ''">
+            , t.remark= #{remark}
+        </if>
+        <if test="groupId !=null and groupId != ''">
+            , t.group_id= #{groupId}
+        </if>
+        <if test="portrait !=null and portrait != ''">
+            , t.portrait= #{portrait}
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            , t.community_id= #{communityId}
+        </if>
+        <where>
+            <if test="driverId !=null and driverId != ''">
+                t.driver_id= #{driverId}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+        </where>
+    </update>
+
+    <!-- 查询司机管理表数量 add by hh -->
+    <select id="queryPubCarDriversCount" parameterType="Map" resultType="Map">
+        select count(1) count
+        from pubcar_driver t
+        where t.status_cd= '0'
+        <if test="driverId !=null and driverId != ''">
+            and t.driver_id= #{driverId}
+        </if>
+        <if test="jobNum !=null and jobNum != ''">
+            and t.job_num like concat('%',#{jobNum},'%')
+        </if>
+        <if test="gender !=null">
+            and t.gender= #{gender}
+        </if>
+        <if test="password !=null and password != ''">
+            and t.password= #{password}
+        </if>
+        <if test="name !=null and name != ''">
+            and t.name like concat('%',#{name},'%')
+        </if>
+        <if test="tel !=null and tel != ''">
+            and t.tel like concat('%',#{tel},'%')
+        </if>
+        <if test="departmentId !=null and departmentId != ''">
+            and t.department_id= #{departmentId}
+        </if>
+        <if test="bId !=null and bId != ''">
+            and t.b_id= #{bId}
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            and t.community_id= #{communityId}
+        </if>
+    </select>
+
+    <!-- 查询司机信息 -->
+    <select id="getPubCarDriverInfo" parameterType="map" resultType="map">
+        SELECT driver_id driverId, name, password, gender,department_id departmentId,tel,job_num jobNum,staff_car_num staffCarNum,id_num idNum,
+               education,remark,group_id groupId,portrait,status,community_id communityId
+        FROM pubcar_driver
+        WHERE b_id = #{bId} AND status_cd = #{statusCd}
+    </select>
+
+</mapper>

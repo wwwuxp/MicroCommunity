@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubCarInsuranceServiceDaoImpl">
+
+    <!-- 保存pubcar_car_insurance信息 add by hh -->
+    <insert id="saveBusinessPubCarInsuranceInfo" parameterType="Map">
+        insert into business_pubcar_car_insurance(insurance_id, quarter_review, quarter_review_content, year_review, year_review_content, insurance_expiration_date, maintenance_expiration_date, insurance_company, maintenance_fee, mileage, b_id, operate)
+        values (#{insuranceId}, #{quarterReview}, #{quarterReviewContent}, #{yearReview}, #{yearReviewContent}, #{insuranceExpirationDate}, #{maintenanceExpirationDate}, #{insuranceCompany}, #{maintenanceFee}, #{mileage}, #{insuranceBId}, #{operate})
+    </insert>
+
+    <!-- 保存pubcar_car_insurance信息 add by hh -->
+    <insert id="savePubCarInsuranceInfo" parameterType="Map">
+        insert into pubcar_car_insurance(insurance_id, quarter_review, quarter_review_content, year_review, year_review_content, insurance_expiration_date, maintenance_expiration_date, insurance_company,maintenance_fee,mileage, b_id)
+        select t.insurance_id,t.quarter_review,t.quarter_review_content,t.year_review,t.year_review_content,t.insurance_expiration_date,t.maintenance_expiration_date,t.insurance_company,t.maintenance_fee,mileage,t.b_id
+        from business_pubcar_car_insurance t
+        where t.operate= 'ADD'
+        <if test="insuranceBId !=null and insuranceBId != ''">
+            and t.b_id= #{insuranceBId}
+        </if>
+    </insert>
+
+    <!-- 修改车辆管理表信息 add by hh -->
+    <update id="updatePubCarInsuranceInfo" parameterType="Map">
+        update pubcar_car_insurance t set t.b_id = #{newInsuranceBId}
+        <if test="quarterReview !=null">
+            , t.quarter_review= #{quarterReview}
+        </if>
+        <if test="quarterReviewContent !=null and quarterReviewContent != ''">
+            , t.quarter_review_content= #{quarterReviewContent}
+        </if>
+        <if test="yearReview !=null">
+            , t.year_review= #{yearReview}
+        </if>
+        <if test="yearReviewContent !=null and yearReviewContent != ''">
+            , t.year_review_content= #{yearReviewContent}
+        </if>
+        <if test="insuranceExpirationDate !=null">
+            , t.insurance_expiration_date= #{insuranceExpirationDate}
+        </if>
+        <if test="maintenanceExpirationDate !=null">
+            , t.maintenance_expiration_date= #{maintenanceExpirationDate}
+        </if>
+        <if test="insuranceCompany !=null and insuranceCompany != ''">
+            , t.insurance_company= #{insuranceCompany}
+        </if>
+        <if test="maintenanceFee !=null and maintenanceFee != ''">
+            , t.maintenance_fee= #{maintenanceFee}
+        </if>
+        <if test="mileage !=null and mileage != ''">
+            , t.mileage= #{mileage}
+        </if>
+        <where>
+            <if test="insuranceId !=null and insuranceId != ''">
+                t.insurance_id= #{insuranceId}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+        </where>
+    </update>
+
+</mapper>

@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubCarTripCarNumServiceDaoImpl">
+
+    <!-- 根据行程id和司机id查询车辆id -->
+    <select id="getCarIdByTripIdAndDriverId" parameterType="map" resultType="string">
+        SELECT car_id carId
+        FROM pubcar_trip_car_num
+        WHERE trip_id = #{tripId} AND driver_id = #{driverId}
+    </select>
+
+    <!-- 获取车辆行程类型和编号 -->
+    <select id="getTripTypeAndNoByTripId" parameterType="string" resultType="com.java110.dto.pubCarTripCarNum.PubCarTripCarNumDto">
+        SELECT t.user_id userId, ptcn.trip_type tripType, ptcn.`no`
+        FROM pubcar_trip t
+        LEFT JOIN pubcar_trip_car_num ptcn ON ptcn.trip_id = t.trip_id
+        WHERE t.trip_id = #{tripId}
+    </select>
+
+    <!-- 查询申请车辆数量业务表信息 -->
+    <select id="getBusinessPubCarTripCarNumInfo" parameterType="map" resultType="map">
+        select b_id bId, num_id numId, trip_type tripType, passenger_num passengerNum, car_id carId, driver_id driverId, no, trip_id tripId
+        from business_pubcar_trip_car_num
+        <where>
+            <if test="bId !=null and bId != ''">
+                b_id= #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and operate= #{operate}
+            </if>
+        </where>
+    </select>
+
+    <!-- 保存申请车辆数量业务管理表信息 add by hh -->
+    <insert id="saveBusinessPubCarTripCarNumInfo" parameterType="Map">
+        insert into business_pubcar_trip_car_num(b_id, num_id, trip_type, passenger_num, car_id, driver_id, no, trip_id, operate, is_self)
+        values (#{bId}, #{numId}, #{tripType}, #{passengerNum}, #{carId}, #{driverId}, #{no}, #{tripId}, #{operate}, #{isSelf})
+    </insert>
+
+    <!-- 保存申请车辆数量管理表信息 add by hh -->
+    <insert id="savePubCarTripCarNumInfo" parameterType="Map">
+        insert into pubcar_trip_car_num(num_id, trip_type, passenger_num, car_id, driver_id, no, trip_id, b_id, is_self)
+        select num_id, trip_type, passenger_num, car_id, driver_id, no, trip_id, b_id, is_self
+        from business_pubcar_trip_car_num
+        <where>
+            <if test="bId !=null and bId != ''">
+                b_id= #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and operate= #{operate}
+            </if>
+        </where>
+    </insert>
+
+    <!-- 查询申请车辆数量管理表信息 add by hh -->
+    <select id="getPubCarTripCarNumInfo" parameterType="Map" resultType="Map">
+        select t.trip_type,t.trip_type tripType,t.num_id,t.num_id numId,t.create_time,t.create_time
+        createTime,t.passenger_id,t.passenger_id passengerId,t.passenger_num,t.passenger_num passengerNum,t.b_id,t.b_id
+        bId,t.is_self,t.is_self isSelf
+        from pubcar_trip_car_num t
+        <where>
+            <if test="tripType !=null and tripType != ''">
+                t.trip_type= #{tripType}
+            </if>
+            <if test="numId !=null and numId != ''">
+                and t.num_id= #{numId}
+            </if>
+            <if test="createTime !=null and createTime != ''">
+                and t.create_time= #{createTime}
+            </if>
+            <if test="passengerId !=null and passengerId != ''">
+                and t.passenger_id= #{passengerId}
+            </if>
+            <if test="passengerNum !=null and passengerNum != ''">
+                and t.passenger_num= #{passengerNum}
+            </if>
+            <if test="statusCd !=null and statusCd != ''">
+                and t.status_cd= #{statusCd}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+            <if test="isSelf !=null and isSelf != ''">
+                and t.is_self= #{isSelf}
+            </if>
+        </where>
+        order by t.create_time desc
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 修改申请车辆数量管理表信息 add by hh -->
+    <update id="updatePubCarTripCarNumInfo" parameterType="Map">
+        update pubcar_trip_car_num t
+        <set>
+            <if test="statusCd !=null and statusCd != ''">
+                t.status_cd = #{statusCd}
+            </if>
+            <if test="tripType !=null">
+                , t.trip_type= #{tripType}
+            </if>
+            <if test="passengerNum !=null">
+                , t.passenger_num= #{passengerNum}
+            </if>
+            <if test="carId !=null and carId != ''">
+                , t.car_id= #{carId}
+            </if>
+            <if test="driverId !=null and driverId != ''">
+                , t.driver_id= #{driverId}
+            </if>
+            <if test="newBId !=null and newBId != ''">
+                , t.b_id = #{newBId}
+            </if>
+        </set>
+        <where>
+            <if test="numId !=null and numId != ''">
+                t.num_id= #{numId}
+            </if>
+            <if test="tripId !=null and tripId != ''">
+                and t.trip_id= #{tripId}
+            </if>
+            <if test="no !=null and no != ''">
+                and t.no= #{no}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+        </where>
+    </update>
+
+    <!-- 查询申请车辆数量管理表数量 add by hh -->
+    <select id="queryPubCarTripCarNumsCount" parameterType="Map" resultType="Map">
+        select count(1) count
+        from pubcar_trip_car_num t
+        <where>
+            <if test="tripType !=null and tripType != ''">
+                and t.trip_type= #{tripType}
+            </if>
+            <if test="numId !=null and numId != ''">
+                and t.num_id= #{numId}
+            </if>
+            <if test="createTime !=null and createTime != ''">
+                and t.create_time= #{createTime}
+            </if>
+            <if test="passengerId !=null and passengerId != ''">
+                and t.passenger_id= #{passengerId}
+            </if>
+            <if test="passengerNum !=null and passengerNum != ''">
+                and t.passenger_num= #{passengerNum}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+            <if test="isSelf !=null and isSelf != ''">
+                and t.is_self= #{isSelf}
+            </if>
+        </where>
+    </select>
+
+</mapper>

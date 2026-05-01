@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubcarRepairFormDaoImpl">
+    <resultMap id="BaseResultMap" type="com.java110.entity.pubcar.PubcarRepairForm">
+        <!--@Table -->
+        <result property="carId" column="car_id" jdbcType="VARCHAR"/>
+        <result property="repairFees" column="repair_fees" jdbcType="NUMERIC"/>
+        <result property="remark" column="remark" jdbcType="VARCHAR"/>
+        <result property="deletedFlag" column="deleted_flag" jdbcType="INTEGER"/>
+        <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+        <result property="repairId" column="repair_id" jdbcType="VARCHAR"/>
+        <result property="ftpJson" column="ftp_json" jdbcType="VARCHAR"/>
+        <result property="communityId" column="community_id" jdbcType="VARCHAR"/>
+        <result property="applicantId" column="applicant_id" jdbcType="VARCHAR"/>
+        <result property="pubcarCustodianOfficePhone" column="pubcar_custodian_office_phone" jdbcType="VARCHAR"/>
+        <result property="pubcarCustodianId" column="pubcar_custodian_id" jdbcType="VARCHAR"/>
+        <result property="isTrafficAccident" column="is_traffic_accident" jdbcType="VARCHAR"/>
+        <result property="isRepair" column="is_repair" jdbcType="VARCHAR"/>
+        <result property="repairRelProposal" column="repair_rel_proposal" jdbcType="VARCHAR"/>
+        <result property="repairRelConfirm" column="repair_rel_confirm" jdbcType="VARCHAR"/>
+        <result property="flowStep" column="flow_step" jdbcType="INTEGER"/>
+        <result property="applicantOfficePhone" column="applicant_office_phone" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <sql id="quertyPageListWhere">
+        where t1.deleted_flag = 0
+        <if test="brand != null and brand != ''">
+            AND t2.brand like concat('%',#{brand},'%')
+        </if>
+        <if test="model != null and model != ''">
+            AND t2.model like concat('%',#{model},'%')
+        </if>
+        <if test="auditStatus != null and auditStatus != ''">
+            AND t1.audit_status = #{auditStatus}
+        </if>
+        <if test="createTimeStart != null">
+            AND t1.create_time >= #{createTimeStart}
+        </if>
+        <if test="createTimeEnd != null">
+            AND t1.create_time &lt;= #{createTimeEnd}
+        </if>
+        <if test=" license != null and license != ''">
+            AND t2.license like concat('%',#{license},'%')
+        </if>
+        <if test=" communityId != null and communityId != ''">
+            AND t1.community_id = #{communityId}
+        </if>
+        <if test="userId != null and userId != ''">
+            <!-- 这里是查询轮到此人审批的记录 -->
+            AND (t1.repair_id in (
+            select prff1.repair_id
+            from pubcar_repair_form_flow prff1
+            left join pubcar_repair_form_flow prff2 on prff1.flow_index = prff2.flow_index + 1 and prff1.repair_id = prff2.repair_id
+            where find_in_set(#{userId},prff1.user_id)  and (prff2.`status` = '2' or prff2.`status` is null) and prff1.`status` = '1')
+            OR t1.applicant_id = #{userId})
+        </if>
+    </sql>
+
+    <select id="quertyPageList" parameterType="com.java110.dto.pubCar.repaorForm.PubcarRepairFormWhereDto" resultType="com.java110.dto.pubCar.repaorForm.PubcarRepairFormDto" >
+        select t1.repair_id repairId, t1.repair_fees repairFees, t1.audit_status auditStatus ,t1.applicant_id applicantId, us.name applicantName,
+        t1.create_time createTime, us.tel applicantPhone, t1.pubcar_custodian_office_phone pubcarCustodianOfficePhone,
+        t1.applicant_office_phone applicantOfficePhone,t1.car_id carId , t2.key_cabinet keyCabinet, t2.license license, t1.ftp_json ftpJson,
+        t2.brand brand, t2.model model, t1.pubcar_custodian_id  pubcarCustodianId ,us2.tel pubcarCustodianPhone, us2.name pubcarCustodianName,
+        t1.is_traffic_accident isTrafficAccident, t1.is_repair isRepair, t1.repair_rel_proposal repairRelProposal, t1.repair_rel_confirm repairRelConfirm,
+        t1.remark remark,if(t3.status = 4 and t3.flow_index &lt;&gt; 0, t3.flow_index - 1, if(t3.flow_step = 0, 0, t3.flow_index+1)) flowIndex, t2.car_type carType,t1.flow_step flowStep,
+        CASE t2.car_type
+        WHEN 1 THEN '7座以下小客车'
+        WHEN 2 THEN '7座（含）以上小客车'
+        WHEN 3 THEN '货车'
+        WHEN 4 THEN '摩托车'
+        WHEN 5 THEN '其它机动车'
+        ELSE '其它' END carTypeName
+        from pubcar_repair_form t1
+        left join u_user us on us.user_id = t1.applicant_id
+        left join u_user us2 on us2.user_id = t1.pubcar_custodian_id
+        left join pubcar_car t2 on t1.car_id = t2.car_id
+        left join pubcar_repair_form_flow t3 on t1.repair_id = t3.repair_id and t1.flow_step = t3.flow_step
+        <include refid="quertyPageListWhere"></include>
+        order by t1.create_time desc
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <select id="quertyPageCount" resultType="int" parameterType="com.java110.dto.pubCar.repaorForm.PubcarRepairFormWhereDto">
+        select count(1) `count`
+        from pubcar_repair_form t1
+        left join pubcar_car t2 on t1.car_id = t2.car_id
+        <include refid="quertyPageListWhere"></include>
+    </select>
+
+    <!-- 保存行程管理业务表信息 add by hh -->
+    <insert id="saveBusinessPubcarRepairForm" parameterType="com.java110.entity.pubcar.BusinessPubcarRepairForm">
+        INSERT INTO `business_pubcar_repair_form`
+            (`b_id`, `repair_id`, `operate`, `community_id`,
+             `car_id`, `repair_fees`, `remark`,`ftp_json`,
+             `applicant_id`, `pubcar_custodian_office_phone`, `pubcar_custodian_id`,
+             `is_traffic_accident`, `is_repair`, `repair_rel_proposal`, `repair_rel_confirm`,
+             `flow_step`, `audit_status`, `applicant_office_phone`)
+        VALUES
+            (#{bId}, #{repairId}, #{operate}, #{communityId}, #{carId}, #{repairFees}, #{remark}, #{ftpJson}, #{applicantId},
+             #{pubcarCustodianOfficePhone}, #{pubcarCustodianId}, #{isTrafficAccident}, #{isRepair},#{repairRelProposal},#{repairRelConfirm},#{flowStep} ,#{auditStatus} ,#{applicantOfficePhone} );
+    </insert>
+
+    <sql id="businesscolumnArr">
+        id AS id ,            b_id AS bId ,            repair_id AS repairId ,            car_id AS carId ,            repair_fees AS repairFees ,            remark AS remark ,            operate AS operate ,            community_id AS communityId ,            create_time AS createTime ,            ftp_json AS ftpJson ,            applicant_id AS applicantId ,            is_traffic_accident AS isTrafficAccident ,            is_repair AS isRepair ,            repair_rel_proposal AS repairRelProposal ,            repair_rel_confirm AS repairRelConfirm ,            flow_step AS flowStep ,            applicant_office_phone AS applicantOfficePhone ,            pubcar_custodian_id AS pubcarCustodianId ,            pubcar_custodian_office_phone AS pubcarCustodianOfficePhone ,            audit_status AS auditStatus         </sql>
+    <select id="getBusinessPubcarRepairFormInfo" parameterType="Map" resultType="com.java110.entity.pubcar.BusinessPubcarRepairForm">
+        select <include refid="businesscolumnArr"></include>
+        from business_pubcar_repair_form
+        <where>
+            <if test="bId !=null and bId != ''">
+                b_id= #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and operate= #{operate}
+            </if>
+        </where>
+    </select>
+
+    <insert id="savePubcarRepairFormInfo" parameterType="Map">
+        insert into pubcar_repair_form(
+        `b_id`, `repair_id`, `car_id`, `repair_fees`,
+        `remark`, `community_id`,`ftp_json`, `applicant_id`, `is_traffic_accident`, `is_repair`,
+        `repair_rel_proposal`, `repair_rel_confirm`, `flow_step`,
+        `applicant_office_phone`, `pubcar_custodian_id`, `pubcar_custodian_office_phone`,
+        `audit_status`)
+        select
+        `b_id`, `repair_id`, `car_id`, `repair_fees`,
+        `remark`, `community_id`,`ftp_json`, `applicant_id`, `is_traffic_accident`, `is_repair`,
+        `repair_rel_proposal`, `repair_rel_confirm`, `flow_step`,
+        `applicant_office_phone`, `pubcar_custodian_id`, `pubcar_custodian_office_phone`,
+        `audit_status`
+        from business_pubcar_repair_form
+        <where>
+            <if test="bId !=null and bId != ''">
+                b_id= #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and operate= #{operate}
+            </if>
+        </where>
+    </insert>
+
+    <sql id="columnArr">
+        car_id AS carId ,            repair_fees AS repairFees ,            remark AS remark ,            deleted_flag AS deletedFlag ,            create_time AS createTime ,            repair_id AS repairId ,            ftp_json AS ftpJson ,            community_id AS communityId ,            applicant_id AS applicantId ,            is_traffic_accident AS isTrafficAccident ,            is_repair AS isRepair ,            repair_rel_proposal AS repairRelProposal ,            repair_rel_confirm AS repairRelConfirm ,            flow_step AS flowStep ,            applicant_office_phone AS applicantOfficePhone ,            pubcar_custodian_id AS pubcarCustodianId ,            pubcar_custodian_office_phone AS pubcarCustodianOfficePhone ,            b_id AS bId ,            audit_status AS auditStatus         </sql>
+
+    <sql id="selectWhere">
+        <if test="carId != null and carId != ''">
+            AND car_id = #{carId}
+        </if>
+        <if test="repairFees != null and repairFees != ''">
+            AND repair_fees = #{repairFees}
+        </if>
+        <if test="remark != null and remark != ''">
+            AND remark = #{remark}
+        </if>
+        <if test="deletedFlag != null and deletedFlag != ''">
+            AND deleted_flag = #{deletedFlag}
+        </if>
+        <if test="createTime != null ">
+            AND create_time = #{createTime}
+        </if>
+        <if test="repairId != null and repairId != ''">
+            AND repair_id = #{repairId}
+        </if>
+        <if test="ftpJson != null and ftpJson != ''">
+            AND ftp_json = #{ftpJson}
+        </if>
+        <if test="communityId != null and communityId != ''">
+            AND community_id = #{communityId}
+        </if>
+        <if test="applicantId != null and applicantId != ''">
+            AND applicant_id = #{applicantId}
+        </if>
+        <if test="pubcarCustodianOfficePhone != null and pubcarCustodianOfficePhone != ''">
+            AND pubcar_custodian_office_phone = #{pubcarCustodianOfficePhone}
+        </if>
+        <if test="pubcarCustodianId != null and pubcarCustodianId != ''">
+            AND pubcar_custodian_id = #{pubcarCustodianId}
+        </if>
+        <if test="isTrafficAccident != null and isTrafficAccident != ''">
+            AND is_traffic_accident = #{isTrafficAccident}
+        </if>
+        <if test="isRepair != null and isRepair != ''">
+            AND is_repair = #{isRepair}
+        </if>
+        <if test="repairRelProposal != null and repairRelProposal != ''">
+            AND repair_rel_proposal = #{repairRelProposal}
+        </if>
+        <if test="repairRelConfirm != null and repairRelConfirm != ''">
+            AND repair_rel_confirm = #{repairRelConfirm}
+        </if>
+        <if test="flowStep != null and flowStep != ''">
+            AND flow_step = #{flowStep}
+        </if>
+    </sql>
+
+    <!-- 根据id查询数据 -->
+    <select id="queryById" resultMap="BaseResultMap">
+        select <include refid="columnArr"></include>
+        from pubcar_repair_form
+        where repair_id = #{repairId}
+    </select>
+    <!-- 分页查询queryAllByLimit -->
+    <select id="queryAllByLimit" resultMap="BaseResultMap">
+        select <include refid="columnArr"></include>
+        from pubcar_repair_form
+        where delered_flag = 0
+        <include refid="selectWhere"></include>
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+    <!-- 查询总数 -->
+    <select id="count" resultType="int">
+        select count(1) `count`
+        from pubcar_repair_form
+        where deleted_flag = 0
+        <include refid="selectWhere"></include>
+    </select>
+    <!--新增，单独-->
+    <insert id="insert" keyProperty="id" useGeneratedKeys="true">
+        insert into `tt`.`pubcar_repair_form`(`car_id`, `repair_fees`, `remark`, `deleted_flag`, `create_time`,
+                                              `repair_id`, `ftp_json`, `community_id`, `applicant_id`,
+                                              `pubcar_custodian_office_phone`, `pubcar_custodian_id`,
+                                              `is_traffic_accident`, `is_repair`, `repair_rel_proposal`,
+                                              `repair_rel_confirm`, `flow_step`, `audit_status`, `applicant_office_phone`)
+        values (#{carId}, #{repairFees}, #{remark}, #{deletedFlag}, #{createTime}, #{repairId}, #{ftpJson},
+                #{communityId}, #{applicantId}, #{pubcarCustodianOfficePhone}, #{pubcarCustodianId}, #{isTrafficAccident},
+                #{isRepair}, #{repairRelProposal}, #{repairRelConfirm}, #{flowStep}, #{auditStatus}, #{applicantOfficePhone})
+    </insert>
+    <!-- 批量插入 -->
+    <insert id="insertBatch" keyProperty="repairId" useGeneratedKeys="true">
+        insert into `tt`.`pubcar_repair_form`(`car_id`, `repair_fees`, `remark`, `deleted_flag`, `create_time`,
+        `repair_id`, `ftp_json`, `community_id`, `applicant_id`, `pubcar_custodian_office_phone`, `pubcar_custodian_id`,
+        `is_traffic_accident`, `is_repair`, `repair_rel_proposal`, `repair_rel_confirm`, `flow_step`, `audit_status`, `applicant_office_phone`)
+        values
+        <foreach collection="list" item="entity" separator=",">
+            (#{entity.carId}, #{entity.repairFees}, #{entity.remark}, #{entity.deletedFlag}, #{entity.createTime},
+            #{entity.repairId}, #{entity.ftpJson}, #{entity.communityId}, #{entity.applicantId},
+            #{entity.pubcarCustodianOfficePhone}, #{entity.pubcarCustodianId}, #{entity.isTrafficAccident},
+            #{entity.isRepair}, #{entity.repairRelProposal}, #{entity.repairRelConfirm}, #{entity.flowStep}, #{entity.auditStatus}, #{entity.applicantOfficePhone})
+        </foreach>
+    </insert>
+    <!-- 批量插入或按主键更新 -->
+    <insert id="insertOrUpdateBatch" keyProperty="repairId" useGeneratedKeys="true">
+        insert into `tt`.`pubcar_repair_form`(`car_id`, `repair_fees`, `remark`, `deleted_flag`, `create_time`,
+        `repair_id`, `ftp_json`, `community_id`, `applicant_id`, `pubcar_custodian_office_phone`, `pubcar_custodian_id`,
+        `is_traffic_accident`, `is_repair`, `repair_rel_proposal`, `repair_rel_confirm`, `flow_step`, `audit_status`, `applicant_office_phone`)
+        values
+        <foreach collection="list" item="entity" separator=",">
+            (#{entity.carId}, #{entity.repairFees}, #{entity.remark}, #{entity.deletedFlag}, #{entity.createTime},
+            #{entity.repairId}, #{entity.ftpJson}, #{entity.communityId}, #{entity.applicantId},
+            #{entity.pubcarCustodianOfficePhone}, #{entity.pubcarCustodianId}, #{entity.isTrafficAccident},
+            #{entity.isRepair}, #{entity.repairRelProposal}, #{entity.repairRelConfirm}, #{entity.flowStep}, #{entity.auditStatus}, #{entity.applicantOfficePhone})
+        </foreach>
+        on duplicate key update
+        repair_id = values(repair_id)
+    </insert>
+    <!--单个修改-->
+    <update id="update" parameterType="com.java110.entity.pubcar.PubcarRepairForm">
+        update pubcar_repair_form
+        <set>
+            <if test="carId != null and carId != ''">
+                `car_id` = #{carId},
+            </if>
+            <if test="repairFees != null and repairFees != ''">
+                `repair_fees` = #{repairFees},
+            </if>
+            <if test="remark != null and remark != ''">
+                `remark` = #{remark},
+            </if>
+            <if test="deletedFlag != null and deletedFlag != ''">
+                `deleted_flag` = #{deletedFlag},
+            </if>
+            <if test="repairId != null and repairId != ''">
+                `repair_id` = #{repairId},
+            </if>
+            <if test="ftpJson != null and ftpJson != ''">
+                `ftp_json` = #{ftpJson},
+            </if>
+            <if test="communityId != null and communityId != ''">
+                `community_id` = #{communityId},
+            </if>
+            <if test="applicantId != null and applicantId != ''">
+                `applicant_id` = #{applicantId},
+            </if>
+            <if test="pubcarCustodianOfficePhone != null and pubcarCustodianOfficePhone != ''">
+                `pubcar_custodian_office_phone` = #{pubcarCustodianOfficePhone},
+            </if>
+            <if test="pubcarCustodianId != null and pubcarCustodianId != ''">
+                `pubcar_custodian_id` = #{pubcarCustodianId},
+            </if>
+            <if test="isTrafficAccident != null and isTrafficAccident != ''">
+                `is_traffic_accident` = #{isTrafficAccident},
+            </if>
+            <if test="isRepair != null and isRepair != ''">
+                `is_repair` = #{isRepair},
+            </if>
+            <if test="repairRelProposal != null and repairRelProposal != ''">
+                `repair_rel_proposal` = #{repairRelProposal},
+            </if>
+            <if test="repairRelConfirm != null and repairRelConfirm != ''">
+                `repair_rel_confirm` = #{repairRelConfirm},
+            </if>
+            <if test="flowStep != null and flowStep != ''">
+                `flow_step` = #{flowStep},
+            </if>
+            <if test="auditStatus != null and auditStatus != ''">
+                `audit_status` = #{auditStatus},
+            </if>
+            <if test="applicantOfficePhone != null and applicantOfficePhone != ''">
+                `applicant_office_phone` = #{applicantOfficePhone},
+            </if>
+            <if test="updateTime != null">
+                `update_time` = #{updateTime},
+            </if>
+        </set>
+        where repair_id = #{repairId}
+    </update>
+    <delete id="deleteById" >
+        delete from pubcar_repair_form where repair_id = #{repairId}
+    </delete>
+    
+</mapper>
+

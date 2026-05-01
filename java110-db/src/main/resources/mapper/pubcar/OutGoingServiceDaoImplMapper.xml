@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="outGoingServiceDaoImpl">
+
+    <!-- 查询外出统计列表 -->
+    <select id="queryOutGoingStatistics" parameterType="com.java110.dto.outGoing.OutGoingDto" resultType="com.java110.vo.api.outGoing.ApiOutGoingStatisticsDataVo">
+        SELECT op.personnel_id personnelId, uu.name, uo.org_name department, d.name position, o.create_time applyTime, o.destination,
+        o.start_time startTime, o.end_time endTime, ouc.name contact, ouc.tel link
+        FROM outgoing_personnel op
+        LEFT JOIN outgoing o ON o.out_id = op.out_id
+        LEFT JOIN outgoing_unit_contact ouc ON ouc.out_id = o.out_id
+        LEFT JOIN u_user uu ON uu.user_id = op.user_id
+        LEFT JOIN u_org_staff_rel uosr ON uosr.staff_id = uu.user_id AND uosr.status_cd = '0'
+        LEFT JOIN u_org uo ON uo.org_id = uosr.org_id AND uo.status_cd = '0'
+        LEFT JOIN t_dict d ON d.status_cd = uosr.rel_cd AND
+        (d.table_name = 'u_org_staff_rel' OR d.table_name = 's_store_user') AND d.table_columns = 'rel_cd'
+        WHERE o.status_cd = '0'
+        AND uu.status_cd = '0'
+        <if test="name != null and name != ''">
+            AND uu.name LIKE CONCAT('%',#{name},'%')
+        </if>
+        <if test="department != null and department != ''">
+            AND uo.org_name LIKE CONCAT('%',#{department},'%')
+        </if>
+        <if test="position != null and position != ''">
+            AND d.name LIKE CONCAT('%',#{position},'%')
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND o.create_time >= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            <![CDATA[AND o.create_time <= #{endDate}]]>
+        </if>
+        ORDER BY o.create_time DESC
+        <if test="page != -1 and page != null ">
+            LIMIT #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 查询外出统计数量 -->
+    <select id="queryOutGoingStatisticsCount" parameterType="com.java110.dto.outGoing.OutGoingDto" resultType="int">
+        SELECT COUNT(*) count
+        FROM outgoing_personnel op
+        LEFT JOIN outgoing o ON o.out_id = op.out_id
+        LEFT JOIN outgoing_unit_contact ouc ON ouc.out_id = o.out_id
+        LEFT JOIN u_user uu ON uu.user_id = op.user_id
+        LEFT JOIN u_org_staff_rel uosr ON uosr.staff_id = uu.user_id AND uosr.status_cd = '0'
+        LEFT JOIN u_org uo ON uo.org_id = uosr.org_id AND uo.status_cd = '0'
+        LEFT JOIN t_dict d ON d.status_cd = uosr.rel_cd AND
+        (d.table_name = 'u_org_staff_rel' OR d.table_name = 's_store_user') AND d.table_columns = 'rel_cd'
+        WHERE o.status_cd = '0'
+            AND uu.status_cd = '0'
+        <if test="name != null and name != ''">
+            AND uu.name LIKE CONCAT('%',#{name},'%')
+        </if>
+        <if test="department != null and department != ''">
+            AND uo.org_name LIKE CONCAT('%',#{department},'%')
+        </if>
+        <if test="position != null and position != ''">
+            AND d.name LIKE CONCAT('%',#{position},'%')
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND o.create_time >= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            <![CDATA[AND o.create_time <= #{endDate}]]>
+        </if>
+    </select>
+
+    <!-- 查询外出记录 -->
+    <resultMap id="userOutGoings" type="com.java110.vo.api.outGoing.ApiUserOutGoingDataVo">
+        <id property="outId" column="outId"/>
+        <result property="destination" column="destination"/>
+        <result property="startTime" column="startTime"/>
+        <result property="endTime" column="endTime"/>
+        <result property="matterDetail" column="matterDetail"/>
+        <result property="state" column="state"/>
+        <collection property="personnels" ofType="com.java110.vo.api.outGoing.ApiOutGoingPersonnel">
+            <id property="userId" column="userId"/>
+            <result property="name" column="name"/>
+            <result property="department" column="department"/>
+        </collection>
+    </resultMap>
+    <select id="queryUserOutGoings" parameterType="com.java110.dto.outGoing.OutGoingDto" resultMap="userOutGoings">
+        SELECT o.out_id outId, o.start_time startTime, o.end_time endTime, o.destination, o.matter_detail matterDetail,
+               uu.user_id userId, uu.`name`, uo.org_name department, o.state
+        FROM outgoing o
+        LEFT JOIN outgoing_personnel op ON op.out_id = o.out_id AND op.status_cd = '0'
+        LEFT JOIN u_user uu ON uu.user_id = op.user_id AND uu.status_cd = '0'
+        LEFT JOIN u_org_staff_rel uosr ON uosr.staff_id = uu.user_id AND uosr.status_cd = '0'
+        LEFT JOIN u_org uo ON uo.org_id = uosr.org_id AND uo.status_cd = '0'
+        WHERE o.status_cd = '0'
+        AND o.out_id IN (
+            SELECT temp.outId
+            FROM (
+                SELECT out_id outId
+                FROM outgoing
+                <where>
+                    <if test="state !=null">
+                        state = #{state}
+                    </if>
+                    <if test="communityId !=null and communityId != ''">
+                        and community_id = #{communityId}
+                    </if>
+                    <if test="userId != null and userId != ''">
+                        and user_id = #{userId}
+                    </if>
+                </where>
+                ORDER BY create_time DESC
+                <if test="page != -1 and page != null ">
+                    LIMIT #{page}, #{row}
+                </if>
+            ) AS temp
+        )
+    </select>
+
+    <!-- 查询外出业务表信息 -->
+    <select id="getBusinessOutGoingInfo" parameterType="map" resultType="map">
+        SELECT b_id bId, out_id outId, out_type outType, destination, start_time startTime, end_time endTime, handling_matter handlingMatter,
+               matter_detail matterDetail, `state`, user_id userId, trip_id tripId, operate, community_id communityId
+        FROM business_outgoing
+        WHERE b_id = #{bId} AND operate = #{operate}
+    </select>
+
+    <!-- 保存外出业务表信息 -->
+    <insert id="saveBusinessOutGoingInfo" parameterType="map">
+        INSERT INTO business_outgoing(b_id, out_id, out_type, destination, start_time, end_time, handling_matter, matter_detail,
+                                       `state`, user_id, trip_id, operate, community_id)
+        VALUES (#{bId}, #{outId}, #{outType}, #{destination}, #{startTime}, #{endTime}, #{handlingMatter}, #{matterDetail},
+                #{state}, #{userId}, #{tripId}, #{operate}, #{communityId})
+    </insert>
+
+    <!-- 保存外出信息表信息 add by hh -->
+    <insert id="saveOutGoingInfo" parameterType="Map">
+        INSERT INTO outgoing(out_id, out_type, destination, start_time, end_time, handling_matter, matter_detail,
+                              `state`, user_id, trip_id, status_cd, b_id, community_id)
+        SELECT out_id, out_type, destination, start_time, end_time, handling_matter, matter_detail, `state`, user_id, trip_id, '0', b_id, community_id
+        FROM business_outgoing
+        WHERE b_id = #{bId} AND operate = #{operate}
+    </insert>
+
+    <!-- 查询外出信息表信息 add by hh -->
+    <select id="getOutGoingInfo" parameterType="com.java110.dto.outGoing.OutGoingDto" resultType="com.java110.vo.api.outGoing.ApiOutGoingDataVo">
+        SELECT out_id outId, uu.`name` userName, CONCAT(uo.org_name,d.`name`) departPosition, uu.tel, t.destination,
+                t.start_time startTime, t.end_time endTime, t.matter_detail matterDetail
+        FROM outgoing t
+        LEFT JOIN u_user uu ON t.user_id = uu.user_id
+        LEFT JOIN u_org_staff_rel r ON r.staff_id = uu.user_id
+        LEFT JOIN u_org uo ON uo.org_id = r.org_id
+        LEFT JOIN t_dict d ON d.status_cd = r.rel_cd AND
+        (d.table_name = 'u_org_staff_rel' OR d.table_name = 's_store_user') AND d.table_columns = 'rel_cd'
+        WHERE t.status_cd = '0'
+        AND uu.status_cd = '0'
+        AND r.status_cd = '0'
+        AND uo.status_cd = '0'
+        <if test="state !=null">
+            and t.state = #{state}
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            and t.community_id= #{communityId}
+        </if>
+        <if test="userId != null and userId != ''">
+            and t.user_id = #{userId}
+        </if>
+        <if test="outIds != null and outIds.size() >0">
+            and t.out_id in
+            <foreach collection="outIds" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        order by t.create_time desc
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 修改外出信息表信息 add by hh -->
+    <update id="updateOutGoingInfo" parameterType="Map">
+        UPDATE outgoing t
+        SET t.status_cd = #{statusCd},
+            t.b_id = #{newBId},
+            t.state= #{state}
+        WHERE t.out_id= #{outId}
+       <!-- <if test="bId !=null and bId != ''">
+            and t.b_id= #{bId}
+        </if>-->
+    </update>
+
+    <!-- 查询外出信息表数量 add by hh -->
+    <select id="queryOutGoingsCount" parameterType="Map" resultType="Map">
+        select count(1) count
+        FROM outgoing t
+        LEFT JOIN u_user uu ON t.user_id = uu.user_id
+        LEFT JOIN u_org_staff_rel r ON r.staff_id = uu.user_id
+        LEFT JOIN u_org uo ON uo.org_id = r.org_id
+        LEFT JOIN t_dict d ON d.status_cd = r.rel_cd AND
+        (d.table_name = 'u_org_staff_rel' OR d.table_name = 's_store_user') AND d.table_columns = 'rel_cd'
+        WHERE t.status_cd = '0'
+        AND uu.status_cd = '0'
+        AND r.status_cd = '0'
+        AND uo.status_cd = '0'
+        <if test="state !=null">
+            and t.state = #{state}
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            and t.community_id= #{communityId}
+        </if>
+        <if test="userId != null and userId != ''">
+            and t.user_id = #{userId}
+        </if>
+    </select>
+
+</mapper>

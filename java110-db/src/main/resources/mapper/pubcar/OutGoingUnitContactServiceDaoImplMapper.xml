@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="outGoingUnitContactServiceDaoImpl">
+
+    <!-- 获取外出单位联系人业务表信息 -->
+    <select id="getBusinessOutGoingUnitContactInfo" parameterType="map" resultType="map">
+        SELECT b_id bId, contact_id contactId, `name`, tel, out_id outId, operate
+        FROM business_outgoing_unit_contact
+        WHERE b_id = #{bId} AND operate = #{operate}
+    </select>
+
+    <!-- 保存外出单位联系人业务表信息 -->
+    <insert id="saveBusinessOutGoingUnitContactInfo" parameterType="map">
+        INSERT INTO business_outgoing_unit_contact(b_id, contact_id, `name`, tel, out_id, operate)
+        VALUES (#{bId}, #{contactId}, #{name}, #{tel}, #{outId}, #{operate})
+    </insert>
+
+    <!-- 保存外出单位联系人信息表信息 add by hh -->
+    <insert id="saveOutGoingUnitContactInfo" parameterType="Map">
+        INSERT INTO outgoing_unit_contact(contact_id, `name`, tel, out_id, b_id, status_cd)
+        SELECT contact_id, `name`, tel, out_id, b_id, '0'
+        FROM business_outgoing_unit_contact
+        WHERE b_id = #{bId} AND operate = #{operate}
+    </insert>
+
+    <!-- 查询外出单位联系人信息表信息 add by hh -->
+    <select id="getOutGoingUnitContactInfo" parameterType="Map" resultType="Map">
+        select t.contact_id,t.contact_id contactId,t.create_time,t.create_time createTime,t.name,t.tel,t.out_id,t.out_id
+        outId,t.status_cd,t.status_cd statusCd,t.b_id,t.b_id bId
+        from outgoing_unit_contact t
+        where 1 =1
+        <if test="contactId !=null and contactId != ''">
+            and t.contact_id= #{contactId}
+        </if>
+        <if test="createTime !=null and createTime != ''">
+            and t.create_time= #{createTime}
+        </if>
+        <if test="name !=null and name != ''">
+            and t.name= #{name}
+        </if>
+        <if test="tel !=null and tel != ''">
+            and t.tel= #{tel}
+        </if>
+        <if test="outId !=null and outId != ''">
+            and t.out_id= #{outId}
+        </if>
+        <if test="statusCd !=null and statusCd != ''">
+            and t.status_cd= #{statusCd}
+        </if>
+        <if test="bId !=null and bId != ''">
+            and t.b_id= #{bId}
+        </if>
+        order by t.create_time desc
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+
+    </select>
+
+    <!-- 修改外出单位联系人信息表信息 add by hh -->
+    <update id="updateOutGoingUnitContactInfo" parameterType="Map">
+        update outgoing_unit_contact t set t.status_cd = #{statusCd}
+        <if test="newBId != null and newBId != ''">
+            ,t.b_id = #{newBId}
+        </if>
+        <if test="createTime !=null and createTime != ''">
+            , t.create_time= #{createTime}
+        </if>
+        <if test="name !=null and name != ''">
+            , t.name= #{name}
+        </if>
+        <if test="tel !=null and tel != ''">
+            , t.tel= #{tel}
+        </if>
+        <if test="outId !=null and outId != ''">
+            , t.out_id= #{outId}
+        </if>
+        where 1=1
+        <if test="contactId !=null and contactId != ''">
+            and t.contact_id= #{contactId}
+        </if>
+        <if test="bId !=null and bId != ''">
+            and t.b_id= #{bId}
+        </if>
+
+    </update>
+
+    <!-- 查询外出单位联系人信息表数量 add by hh -->
+    <select id="queryOutGoingUnitContactsCount" parameterType="Map" resultType="Map">
+        select count(1) count
+        from outgoing_unit_contact t
+        where 1 =1
+        <if test="contactId !=null and contactId != ''">
+            and t.contact_id= #{contactId}
+        </if>
+        <if test="createTime !=null and createTime != ''">
+            and t.create_time= #{createTime}
+        </if>
+        <if test="name !=null and name != ''">
+            and t.name= #{name}
+        </if>
+        <if test="tel !=null and tel != ''">
+            and t.tel= #{tel}
+        </if>
+        <if test="outId !=null and outId != ''">
+            and t.out_id= #{outId}
+        </if>
+        <if test="statusCd !=null and statusCd != ''">
+            and t.status_cd= #{statusCd}
+        </if>
+        <if test="bId !=null and bId != ''">
+            and t.b_id= #{bId}
+        </if>
+
+    </select>
+
+</mapper>

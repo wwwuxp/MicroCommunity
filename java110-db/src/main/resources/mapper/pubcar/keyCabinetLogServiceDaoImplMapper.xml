@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="keyCabinetLogServiceDaoImpl">
+
+    <select id="getKeyCabinetLogByApplicantIdAndKeyCabinet" parameterType="com.java110.dto.keyCabinetLog.KeyCabinetLogDto" resultType="com.java110.dto.keyCabinetLog.KeyCabinetLogDto">
+        SELECT `type`
+        FROM key_cabinet_log
+        WHERE key_no = #{keyNo} AND user_id = #{userId}
+        ORDER BY record_time DESC
+        LIMIT 1
+    </select>
+
+    <!-- 查询分页列表 -->
+    <select id="queryKeyCabinetLogs" parameterType="com.java110.dto.keyCabinetLog.KeyCabinetLogDto" resultType="com.java110.vo.api.keyCabinetLog.ApiKeyCabinetLogDataVo">
+        SELECT id, record_time recordTime, `type`, department, `name`, identify_mode identifyMode, key_no keyNo
+        FROM key_cabinet_log
+        <where>
+            <if test="type != null">
+                `type` = #{type}
+            </if>
+            <if test="keyNo != null and keyNo != ''">
+                AND key_no = #{keyNo}
+            </if>
+            <if test="name != null and name != ''">
+                AND `name` LIKE CONCAT(#{name}, '%')
+            </if>
+            <if test="startTime != null">
+                AND record_time >= #{startTime}
+            </if>
+            <if test="endTime != null">
+                <![CDATA[AND record_time <= #{endTime}]]>
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 查询总数 -->
+    <select id="queryKeyCabinetLogsCount" parameterType="com.java110.dto.keyCabinetLog.KeyCabinetLogDto" resultType="int">
+        SELECT COUNT(*) count
+        FROM key_cabinet_log
+        <where>
+            <if test="type != null">
+                `type` = #{type}
+            </if>
+            <if test="keyNo != null and keyNo != ''">
+                AND key_no = #{keyNo}
+            </if>
+            <if test="name != null and name != ''">
+                AND `name` LIKE CONCAT(#{name}, '%')
+            </if>
+            <if test="startTime != null">
+                AND record_time >= #{startTime}
+            </if>
+            <if test="endTime != null">
+                <![CDATA[AND record_time <= #{endTime}]]>
+            </if>
+        </where>
+    </select>
+
+    <select id="getKeyCabinetLogByNameAndDepartmentAndKey" parameterType="com.java110.dto.keyCabinetLog.KeyCabinetLogDto" resultType="com.java110.dto.keyCabinetLog.KeyCabinetLogDto">
+        SELECT record_time recordTime, `type`
+        FROM key_cabinet_log
+        WHERE key_no = #{keyNo} AND `name` = #{name} AND department = #{department}
+        ORDER BY record_time DESC
+        LIMIT 1
+    </select>
+
+    <select id="getKeyCabinetLogByKeyCabinetsBatch" parameterType="java.util.List" resultType="com.java110.dto.keyCabinetLog.KeyCabinetLogDto">
+        SELECT key_no keyNo, `type`, record_time recordTime, `name`, department
+        FROM key_cabinet_log
+        WHERE record_time IN (
+            SELECT MAX(record_time)
+            FROM key_cabinet_log
+            GROUP BY key_no
+        )
+        AND key_no IN
+        <foreach collection="list" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </select>
+
+</mapper>

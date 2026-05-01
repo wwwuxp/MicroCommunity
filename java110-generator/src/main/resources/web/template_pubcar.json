@@ -1,0 +1,15 @@
+{
+  "templateName":"外出信息表",
+  "templateCode":"outGoing",
+  "templateKey":"outId",
+  "templateKeyName":"外出ID",
+  "searchCode": "name",
+  "searchName": "姓名",
+  "directories": "outGoing",
+  "conditions": [
+
+  ],
+  "columns":[
+
+  ]
+}

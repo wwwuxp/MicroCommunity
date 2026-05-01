@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="tablePictureServiceDaoImpl">
+
+    <!-- 保存图片数据 -->
+    <insert id="saveTablePicture" parameterType="com.java110.dto.tablePicture.TablePictureDto">
+        INSERT INTO table_picture(picture, pri_key, `table_name`, picture_type, feature_code)
+        VALUES (#{picture}, #{priKey}, #{tableName}, #{pictureType}, #{featureCode})
+    </insert>
+
+    <!-- 获取图片数据 -->
+    <select id="getPictures" parameterType="com.java110.dto.tablePicture.TablePictureDto" resultType="com.java110.dto.tablePicture.TablePictureDto">
+        SELECT id, picture, picture_type pictureType
+        FROM table_picture
+        WHERE `table_name` = #{tableName}
+        AND pri_key IN
+        <foreach collection="priKeys" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </select>
+
+    <!-- 获取一张图片 -->
+    <select id="getPicture" parameterType="map" resultType="com.java110.dto.tablePicture.TablePictureDto">
+        SELECT picture
+        FROM table_picture
+        WHERE id = #{id}
+    </select>
+    <select id="getPictureByPriKey" parameterType="map" resultType="com.java110.dto.tablePicture.TablePictureDto">
+        SELECT picture
+        FROM table_picture
+        WHERE pri_key = #{priKey}
+        ORDER BY create_time DESC
+        LIMIT 1;
+    </select>
+
+    <!-- 判断某人的照片是否存在 -->
+    <select id="existTablePicture" parameterType="com.java110.dto.tablePicture.TablePictureDto" resultType="java.lang.Integer">
+        SELECT id
+        FROM table_picture
+        WHERE `table_name` = #{tableName} AND pri_key = #{priKey}
+    </select>
+
+    <!-- 更新图片信息 -->
+    <update id="updateTablePicture" parameterType="com.java110.dto.tablePicture.TablePictureDto">
+        UPDATE table_picture
+        SET picture = #{picture}, pri_key = #{priKey}, `table_name` = #{tableName}, feature_code = #{featureCode}
+        WHERE id = #{id};
+    </update>
+
+</mapper>

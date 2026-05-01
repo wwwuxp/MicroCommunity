@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="visitInvitationServiceDaoImpl">
+
+    <!-- 查询访客邀约列表 -->
+    <resultMap id="invitations" type="com.java110.vo.api.visitInvitation.ApiVisitInvitationDataVo">
+        <id property="invitationId" column="invitationId"/>
+        <result property="visitType" column="visitType"/>
+        <result property="visitTime" column="visitTime"/>
+        <result property="isCome" column="isCome"/>
+        <result property="qrCode" column="qrCode"/>
+        <result property="invitationReason" column="invitationReason"/>
+        <result property="createTime" column="createTime"/>
+        <collection property="visitors" ofType="com.java110.vo.api.visitInvitation.ApiVisitorDataVo">
+            <id property="visitorId" column="visitorId"/>
+            <result property="no" column="no"/>
+            <result property="name" column="name"/>
+            <result property="tel" column="tel"/>
+            <result property="unit" column="unit"/>
+            <result property="idCard" column="idCard"/>
+            <result property="license" column="license"/>
+        </collection>
+    </resultMap>
+    <select id="listVisitInvitations" parameterType="com.java110.dto.visitInvitation.VisitInvitationDto" resultMap="invitations">
+        SELECT vi.invitation_id invitationId, vi.visit_type visitType, vi.visit_time visitTime, vi.is_come isCome,vi.qr_code qrCode,
+               vi.invitation_reason invitationReason, v.visitor_id visitorId, v.no, v.`name`, v.tel, v.unit, v.id_card idCard,vi.create_time createTime,
+               v.license
+        FROM visit_invitation vi
+        LEFT JOIN visitor v ON v.invitation_id = vi.invitation_id AND v.status_cd = '0'
+        WHERE vi.invitation_id IN (
+            SELECT temp.id
+            FROM (
+                SELECT DISTINCT vi.invitation_id id
+                FROM visit_invitation vi
+                LEFT JOIN visitor v ON v.invitation_id = vi.invitation_id AND v.status_cd = '0'
+                WHERE vi.status_cd = '0' AND vi.community_id = #{communityId}
+                <if test="name !=null and name != ''">
+                    and v.name like concat('%', #{name}, '%')
+                </if>
+                <if test="unit !=null and unit != ''">
+                    and v.unit like concat('%', #{unit}, '%')
+                </if>
+                <if test="isCome !=null">
+                    and vi.is_come = #{isCome}
+                </if>
+                <if test="lessVisitTime !=null">
+                    <![CDATA[and vi.visit_time >=  #{lessVisitTime}]]>
+                </if>
+                <if test="moreVisitTime !=null">
+                    <![CDATA[and vi.visit_time <=  #{moreVisitTime}]]>
+                </if>
+                <if test="userId !=null and userId != ''">
+                    and vi.user_id = #{userId}
+                </if>
+                <if test="page != -1 and page != null ">
+                    limit #{page}, #{row}
+                </if>
+            ) AS temp
+        )
+    </select>
+
+    <!-- 查询访客邀约数量 -->
+    <select id="queryVisitInvitationsCount" parameterType="com.java110.dto.visitInvitation.VisitInvitationDto" resultType="int">
+        SELECT COUNT(DISTINCT vi.invitation_id) count
+        FROM visit_invitation vi
+        LEFT JOIN visitor v ON v.invitation_id = vi.invitation_id AND v.status_cd = '0'
+        WHERE vi.status_cd = '0' AND vi.community_id = #{communityId}
+        <if test="name !=null and name != ''">
+            and v.name like concat('%', #{name}, '%')
+        </if>
+        <if test="unit !=null and unit != ''">
+            and v.unit like concat('%', #{unit}, '%')
+        </if>
+        <if test="isCome !=null">
+            and vi.is_come = #{isCome}
+        </if>
+        <if test="lessVisitTime !=null">
+            <![CDATA[and vi.visit_time >=  #{lessVisitTime}]]>
+        </if>
+        <if test="moreVisitTime !=null">
+            <![CDATA[and vi.visit_time <=  #{moreVisitTime}]]>
+        </if>
+        <if test="userId !=null and userId != ''">
+            and vi.user_id = #{userId}
+        </if>
+    </select>
+
+    <!-- 是否有相同的unique_code -->
+    <select id="hasSameUniqueCode" parameterType="map" resultType="integer">
+        SELECT 1
+        FROM visit_invitation
+        WHERE unique_code = #{uniqueCode} AND community_id = #{communityId} AND is_come = 0 AND status_cd = '0'
+        LIMIT 1;
+    </select>
+
+    <!-- 获取访客邀约实例表信息 -->
+    <select id="getVisitInvitationInfo" parameterType="map" resultType="map">
+        SELECT invitation_id invitationId, visit_type visitType, visit_time visitTime, is_come isCome, unique_code uniqueCode, user_id userId, qr_code qrCode, community_id communityId
+        FROM visit_invitation
+        WHERE invitation_id = #{invitationId} AND status_cd = #{statusCd}
+    </select>
+
+    <!-- 更新访客邀约信息 -->
+    <update id="updateVisitInvitationInfo" parameterType="map">
+        UPDATE visit_invitation
+        SET status_cd = #{statusCd}
+        <if test="newBId != null and newBId != ''">
+            ,b_id = #{newBId}
+        </if>
+        <if test="visitType != null">
+            ,visit_type = #{visitType}
+        </if>
+        <if test="visitTime != null">
+            ,visit_time = #{visitTime}
+        </if>
+        <if test="isCome != null">
+            ,is_come = #{isCome}
+        </if>
+        <if test="uniqueCode != null and uniqueCode != ''">
+            ,unique_code = #{uniqueCode}
+        </if>
+        <if test="userId != null and userId != ''">
+            ,user_id = #{userId}
+        </if>
+        <if test="qrCode != null and qrCode != ''">
+            ,qr_code = #{qrCode}
+        </if>
+        <where>
+            <if test="invitationId !=null and invitationId != ''">
+                invitation_id= #{invitationId}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and b_id= #{bId}
+            </if>
+        </where>
+    </update>
+
+    <!-- 获取访客邀约业务表信息 -->
+    <select id="getBusinessVisitInvitationInfo" parameterType="map" resultType="map">
+        SELECT b_id bId, invitation_id invitationId, visit_type visitType, visit_time visitTime, invitation_reason invitationReason, community_id communityId, operate
+        FROM business_visit_invitation
+        WHERE b_id = #{bId} AND operate = #{operate}
+    </select>
+
+    <!-- 保存访客邀约业务表信息 -->
+    <insert id="saveBusinessVisitInvitationInfo" parameterType="map">
+        INSERT INTO business_visit_invitation(b_id, invitation_id, visit_type, visit_time, is_come, unique_code, user_id, qr_code, invitation_reason, community_id, operate)
+        VALUES (#{bId}, #{invitationId}, #{visitType}, #{visitTime}, #{isCome}, #{uniqueCode}, #{userId}, #{qrCode}, #{invitationReason}, #{communityId}, #{operate})
+    </insert>
+
+    <!-- 保存访客邀约信息表信息 add by hh -->
+    <insert id="saveVisitInvitationInfo" parameterType="Map">
+        INSERT INTO visit_invitation(invitation_id, visit_type, visit_time, is_come, unique_code, user_id, qr_code, invitation_reason, community_id, status_cd, b_id)
+        SELECT invitation_id, visit_type, visit_time, is_come, unique_code, user_id, qr_code, invitation_reason, community_id, '0', b_id
+        FROM business_visit_invitation
+        WHERE b_id = #{bId} AND operate = #{operate}
+    </insert>
+
+</mapper>

@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="tTempDaoImpl">
+    <resultMap id="BaseResultMap" type="com.java110.entity.user.TTemp">
+        <!--@Table -->
+        <result property="tempId" column="temp_id" jdbcType="INTEGER"/>
+        <result property="tempName" column="temp_name" jdbcType="VARCHAR"/>
+        <result property="tempKey" column="temp_key" jdbcType="VARCHAR"/>
+        <result property="tempValue" column="temp_value" jdbcType="VARCHAR"/>
+        <result property="tempRemark" column="temp_remark" jdbcType="VARCHAR"/>
+        <result property="statusCd" column="status_cd" jdbcType="VARCHAR"/>
+    </resultMap>
+    <sql id="columnArr">
+            temp_id AS tempId ,            temp_name AS tempName ,            temp_key AS tempKey ,            temp_value AS tempValue ,            temp_remark AS tempRemark ,            status_cd AS statusCd         </sql>
+    
+    <sql id="selectWhere">
+            <if test="tempId != null and tempId != ''">
+            AND temp_id = #{tempId}
+        </if>
+            <if test="tempName != null and tempName != ''">
+            AND temp_name = #{tempName}
+        </if>
+            <if test="tempKey != null and tempKey != ''">
+            AND temp_key = #{tempKey}
+        </if>
+            <if test="tempValue != null and tempValue != ''">
+            AND temp_value = #{tempValue}
+        </if>
+            <if test="tempRemark != null and tempRemark != ''">
+            AND temp_remark = #{tempRemark}
+        </if>
+            <if test="statusCd != null and statusCd != ''">
+            AND status_cd = #{statusCd}
+        </if>
+        </sql>
+
+    <!-- 根据id查询数据 -->
+    <select id="queryById" resultMap="BaseResultMap">
+        select <include refid="columnArr"></include>
+        from t_temp
+        where tempId = #{temp_id}
+    </select>
+
+    <!-- 分页查询queryAllByLimit -->
+    <select id="queryList" resultMap="BaseResultMap">
+        select <include refid="columnArr"></include>
+        from t_temp
+        where 1=1
+        <include refid="selectWhere"></include>
+    </select>
+
+    <!-- 分页查询queryAllByLimit -->
+    <select id="queryOne" resultMap="BaseResultMap">
+        select <include refid="columnArr"></include>
+        from t_temp
+        where 1=1
+        <include refid="selectWhere"></include>
+        limit 0,1
+    </select>
+
+    <!-- 查询总数 -->
+    <select id="count" resultType="int">
+        select count(1) `count`
+        from t_temp
+        where 1=1
+        <include refid="selectWhere"></include>
+    </select>
+    <!--新增，单独-->
+    <insert id="insert"  keyProperty="id" useGeneratedKeys="true">
+        insert into tt.t_temp(temp_id, temp_name, temp_key, temp_value, temp_remark, status_cd)
+        values
+        (#{tempId}, #{tempName}, #{tempKey}, #{tempValue}, #{tempRemark}, #{statusCd})
+    </insert>
+    <!-- 批量插入 -->
+    <insert id="insertBatch" keyProperty="tempId" useGeneratedKeys="true">
+        insert into tt.t_temp(temp_id, temp_name, temp_key, temp_value, temp_remark, status_cd)
+        values
+        <foreach collection="entities" item="entity" separator=",">
+        (#{tempId}, #{tempName}, #{tempKey}, #{tempValue}, #{tempRemark}, #{statusCd})
+        </foreach>
+    </insert>
+    <!-- 批量插入或按主键更新 -->
+    <insert id="insertOrUpdateBatch" keyProperty="tempId" useGeneratedKeys="true">
+        insert into tt.t_temp(temp_id, temp_name, temp_key, temp_value, temp_remark, status_cd)
+        values
+        <foreach collection="entities" item="entity" separator=",">
+            (#{tempId}, #{tempName}, #{tempKey}, #{tempValue}, #{tempRemark}, #{statusCd})
+        </foreach>
+        on duplicate key update
+         temp_id = values(temp_id)     </insert>
+    <!--单个修改-->
+    <update id="update" parameterType="com.java110.entity.user.TTemp">
+        update t_temp
+        <set>
+                <if test="tempId != null and tempId != ''">
+            temp_id = #{tempId},
+        </if>
+                <if test="tempName != null and tempName != ''">
+            temp_name = #{tempName},
+        </if>
+                <if test="tempKey != null and tempKey != ''">
+            temp_key = #{tempKey},
+        </if>
+                <if test="tempValue != null and tempValue != ''">
+            temp_value = #{tempValue},
+        </if>
+                <if test="tempRemark != null and tempRemark != ''">
+            temp_remark = #{tempRemark},
+        </if>
+                <if test="statusCd != null and statusCd != ''">
+            status_cd = #{statusCd},
+        </if>
+                </set>
+         where temp_id = #{tempId}
+    </update>
+    <delete id="deleteById" >
+        delete from t_temp where temp_id = #{tempId}
+    </delete>
+    
+</mapper>
+

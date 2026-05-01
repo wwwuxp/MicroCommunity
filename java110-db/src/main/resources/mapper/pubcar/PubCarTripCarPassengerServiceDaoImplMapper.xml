@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubCarTripCarPassengerServiceDaoImpl">
+
+    <!-- 获取乘车人业务表信息 -->
+    <select id="getBusinessTripCarPassengerInfo" parameterType="map" resultType="map">
+        select b_id bId, passenger_id passengerId, user_id userId, passenger_name passengerName, passenger_department passengerDepartment,passenger_position passengerPosition, num_id numId
+        from business_pubcar_trip_car_passenger
+        <where>
+            <if test="bId !=null and bId != ''">
+                and b_id= #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and operate= #{operate}
+            </if>
+        </where>
+    </select>
+
+    <!-- 保存乘车人信息业务管理表信息 add by hh -->
+    <insert id="saveBusinessTripCarPassengerInfo" parameterType="Map">
+        insert into business_pubcar_trip_car_passenger(b_id, passenger_id, user_id, passenger_name, passenger_department, passenger_position, num_id, operate)
+        values (#{bId}, #{passengerId}, #{userId}, #{passengerName}, #{passengerDepartment}, #{passengerPosition}, #{numId}, #{operate})
+    </insert>
+
+    <!-- 保存乘车人信息管理表信息 add by hh -->
+    <insert id="saveTripCarPassengerInfo" parameterType="Map">
+        insert into pubcar_trip_car_passenger(passenger_id, user_id, passenger_name, passenger_department, passenger_position, num_id, b_id)
+        select passenger_id, user_id, passenger_name, passenger_department, passenger_position, num_id, b_id
+        from business_pubcar_trip_car_passenger
+        <where>
+            <if test="bId !=null and bId != ''">
+                and b_id= #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and operate= #{operate}
+            </if>
+        </where>
+    </insert>
+
+    <!-- 查询乘车人信息管理表信息 add by hh -->
+    <select id="getPubCarTripCarPassengerInfo" parameterType="Map" resultType="Map">
+        select t.passenger_name,t.passenger_name passengerName,t.create_time,t.create_time
+        createTime,t.passenger_tel,t.passenger_tel passengerTel,t.passenger_id,t.passenger_id passengerId,t.b_id,t.b_id
+        bId
+        from pubcar_trip_car_passenger t
+        <where>
+            <if test="statusCd !=null and statusCd != ''">
+                t.status_cd = #{statusCd}
+            </if>
+            <if test="passengerName !=null and passengerName != ''">
+                t.passenger_name= #{passengerName}
+            </if>
+            <if test="createTime !=null and createTime != ''">
+                and t.create_time= #{createTime}
+            </if>
+            <if test="passengerTel !=null and passengerTel != ''">
+                and t.passenger_tel= #{passengerTel}
+            </if>
+            <if test="passengerId !=null and passengerId != ''">
+                and t.passenger_id= #{passengerId}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+        </where>
+        order by t.create_time desc
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 修改乘车人信息管理表信息 add by hh -->
+    <update id="updatePubCarTripCarPassengerInfo" parameterType="Map">
+        update pubcar_trip_car_passenger t set t.status_cd = #{statusCd}
+        <if test="newBId != null and newBId != ''">
+            ,t.b_id = #{newBId}
+        </if>
+        <if test="passengerName !=null and passengerName != ''">
+            , t.passenger_name= #{passengerName}
+        </if>
+        <if test="createTime !=null and createTime != ''">
+            , t.create_time= #{createTime}
+        </if>
+        <if test="passengerTel !=null and passengerTel != ''">
+            , t.passenger_tel= #{passengerTel}
+        </if>
+        <where>
+            <if test="passengerId !=null and passengerId != ''">
+                t.passenger_id= #{passengerId}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+        </where>
+    </update>
+
+    <!-- 查询乘车人信息管理表数量 add by hh -->
+    <select id="queryPubCarTripCarPassengersCount" parameterType="Map" resultType="Map">
+        select count(1) count
+        from pubcar_trip_car_passenger t
+        <where>
+            <if test="passengerName !=null and passengerName != ''">
+                and t.passenger_name= #{passengerName}
+            </if>
+            <if test="createTime !=null and createTime != ''">
+                and t.create_time= #{createTime}
+            </if>
+            <if test="passengerTel !=null and passengerTel != ''">
+                and t.passenger_tel= #{passengerTel}
+            </if>
+            <if test="passengerId !=null and passengerId != ''">
+                and t.passenger_id= #{passengerId}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+        </where>
+    </select>
+
+</mapper>

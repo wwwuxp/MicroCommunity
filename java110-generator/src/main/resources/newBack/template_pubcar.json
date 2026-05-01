@@ -1,0 +1,24 @@
+{
+  "autoMove": true,
+  "id": "visitorId",
+  "name": "visitor",
+  "desc": "访客邀约人信息表",
+  "shareParam": "communityId",
+  "shareColumn": "community_id",
+  "shareName": "community",
+  "tableName": "visitor",
+  "param": {
+    "visitorId": "visitor_id",
+    "name": "name",
+    "tel": "tel",
+    "unit": "unit",
+    "invitationId": "invitation_id",
+    "bId": "b_id",
+    "statusCd": "status_cd",
+    "createTime": "create_time"
+  },
+
+  "required": [
+
+  ]
+}

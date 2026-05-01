@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="visitorServiceDaoImpl">
+
+    <!-- 获取visitor表信息 -->
+    <select id="getVisitorInfo" parameterType="map" resultType="map">
+        SELECT visitor_id visitorId, `name`, tel, unit, no, invitation_id invitationId, b_id bId
+        FROM visitor
+        <where>
+            <if test="visitorId != null and visitorId != ''">
+                visitor_id = #{visitorId}
+            </if>
+            <if test="invitationId != null and invitationId != ''">
+                AND invitation_id = #{invitationId}
+            </if>
+            <if test="statusCd != null and statusCd != ''">
+                AND status_cd = #{statusCd}
+            </if>
+        </where>
+    </select>
+
+    <!-- 获取访客邀约人业务表信息 -->
+    <select id="getBusinessVisitorInfo" parameterType="map" resultType="map">
+        SELECT b_id bId, visitor_id visitorId, `name`, tel, unit, no, invitation_id invitationId, id_card idCard, license, operate
+        FROM business_visitor
+        WHERE b_id = #{bId} AND operate = #{operate}
+    </select>
+
+    <!-- 保存访客邀约人业务表信息 -->
+    <insert id="saveBusinessVisitorInfo" parameterType="map">
+        INSERT INTO business_visitor (b_id, visitor_id, `name`, tel, unit, no, invitation_id, id_card, license, operate)
+        VALUES (#{bId}, #{visitorId}, #{name}, #{tel}, #{unit}, #{no}, #{invitationId}, #{idCard}, #{license}, #{operate})
+    </insert>
+
+    <!-- 保存访客邀约人信息表信息 add by hh -->
+    <insert id="saveVisitorInfo" parameterType="Map">
+        INSERT INTO visitor(visitor_id, `name`, tel, unit, no, invitation_id, id_card, license, b_id, status_cd)
+        SELECT visitor_id, `name`, tel, unit, no, invitation_id, id_card, license, b_id, '0'
+        FROM business_visitor
+        WHERE b_id = #{bId} AND operate = #{operate}
+    </insert>
+
+    <!-- 查询访客邀约人信息表信息 add by hh -->
+    <select id="listVisitors" parameterType="com.java110.dto.visitor.VisitorDto" resultType="com.java110.vo.api.visitInvitation.ApiVisitInvitationDataVo">
+        SELECT t.visitor_id visitorId, t.`name`, t.tel, t.unit, v.visit_type visitType, v.is_come isCome,
+        v.visit_time visitTime, v.qr_code qrCode, t.id_card idCard
+        FROM visitor t
+        LEFT JOIN visit_invitation v ON v.invitation_id = t.invitation_id
+        WHERE t.status_cd = '0'
+        <if test="visitType != null">
+            and v.visit_type= #{visitType}
+        </if>
+        <if test="isCome !=null">
+            and v.is_come = #{isCome}
+        </if>
+        <if test="userId !=null and userId != ''">
+            and v.user_id = #{userId}
+        </if>
+        <if test="name !=null and name != ''">
+            and t.name like concat('%', #{name}, '%')
+        </if>
+        <if test="unit !=null and unit != ''">
+            and t.unit like concat('%', #{unit}, '%')
+        </if>
+        <if test="lessVisitTime !=null">
+            <![CDATA[and v.visit_time >=  #{lessVisitTime}]]>
+        </if>
+        <if test="moreVisitTime !=null">
+            <![CDATA[and v.visit_time <=  #{moreVisitTime}]]>
+        </if>
+        <if test="communityId != null and communityId != ''">
+            and v.community_id = #{communityId}
+        </if>
+        order by t.create_time desc
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 修改访客邀约人信息表信息 add by hh -->
+    <update id="updateVisitorInfo" parameterType="Map">
+        UPDATE visitor t SET t.status_cd = #{statusCd}
+        <if test="newBId != null and newBId != ''">
+            ,t.b_id = #{newBId}
+        </if>
+        <if test="name !=null and name != ''">
+            , t.name= #{name}
+        </if>
+        <if test="tel !=null and tel != ''">
+            , t.tel= #{tel}
+        </if>
+        <if test="unit !=null and unit != ''">
+            , t.unit= #{unit}
+        </if>
+        <if test="invitationId !=null and invitationId != ''">
+            , t.invitation_id= #{invitationId}
+        </if>
+        <if test="idCard !=null and idCard != ''">
+            , t.id_card= #{idCard}
+        </if>
+        <where>
+            <if test="visitorId !=null and visitorId != ''">
+                t.visitor_id= #{visitorId}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+        </where>
+    </update>
+
+    <!-- 查询访客邀约人信息表数量 add by hh -->
+    <select id="queryVisitorsCount" parameterType="Map" resultType="Map">
+        SELECT count(1) count
+        FROM visitor t
+        LEFT JOIN visit_invitation v ON v.invitation_id = t.invitation_id
+        WHERE t.status_cd = '0'
+        <if test="visitType != null">
+            and v.visit_type= #{visitType}
+        </if>
+        <if test="isCome !=null">
+            and v.is_come = #{isCome}
+        </if>
+        <if test="userId !=null and userId != ''">
+            and v.user_id = #{userId}
+        </if>
+        <if test="name !=null and name != ''">
+            and t.name like concat('%', #{name}, '%')
+        </if>
+        <if test="unit !=null and unit != ''">
+            and t.unit like concat('%', #{unit}, '%')
+        </if>
+        <if test="lessVisitTime !=null">
+            <![CDATA[and v.visit_time >=  #{lessVisitTime}]]>
+        </if>
+        <if test="moreVisitTime !=null">
+            <![CDATA[and v.visit_time <=  #{moreVisitTime}]]>
+        </if>
+        <if test="communityId != null and communityId != ''">
+            and v.community_id = #{communityId}
+        </if>
+    </select>
+
+</mapper>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.java110.ext.mapper.UserMapper">
+
+
+    <!-- 是否有相同的invitorId了 add by hh -->
+    <select id="hasSameInvitorId" parameterType="map" resultType="java.lang.Integer">
+        SELECT 1
+        FROM u_user
+        WHERE status_cd = '0' AND invitor_id = #{invitorId}
+        LIMIT 1;
+    </select>
+    <select id="selectUserIdByNotInUserAndFlagNotNull" resultType="java.lang.String">
+        select user_id from u_user
+        where flag is not null
+        and status_cd = '0'
+        <if test="exsitsUserId != null">
+        and user_id not in
+            <foreach collection="exsitsUserId" item="item" open="(" close=")" separator=",">
+                #{item}
+            </foreach>
+        </if>
+    </select>
+
+</mapper>

@@ -1,0 +1,10 @@
+FROM registry.cn-beijing.aliyuncs.com/sxd/ubuntu-java8:1.0
+MAINTAINER hz <hezongshuju>
+
+
+ADD bin/start_common.sh /root/
+
+
+RUN chmod u+x /root/start_common.sh
+
+CMD ["/root/start_common.sh","dev -Xms512m -Xmx512m"]

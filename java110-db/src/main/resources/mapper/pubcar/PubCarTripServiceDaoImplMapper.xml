@@ -1,0 +1,777 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubCarTripServiceDaoImpl">
+
+    <!-- 查询用车记录列表 -->
+    <select id="queryPubCarUseRecords" parameterType="com.java110.dto.pubCarTrip.PubCarTripDto" resultType="com.java110.vo.api.pubCarTrip.ApiCarUseRecordDataVo">
+        SELECT pt.trip_id tripId, pt.`start`, pt.destination,
+                DATE_FORMAT(pt.start_time, '%Y年%c月%e日 %H:%i') startTime,
+                DATE_FORMAT(pt.end_time, '%Y年%c月%e日 %H:%i') endTime,
+                DATE_FORMAT(pt.create_time, '%Y年%c月%e日 %H:%i') createTime,
+                pc.license, pc.brand, pc.model
+        FROM pubcar_trip pt
+        LEFT JOIN pubcar_trip_car_num ptcn ON ptcn.trip_id = pt.trip_id AND ptcn.status_cd = '0'
+        LEFT JOIN pubcar_car pc ON pc.car_id = ptcn.car_id AND pc.status_cd = '0'
+        WHERE pt.status_cd = '0'
+        <if test="userId != null and userId != ''">
+            AND pt.user_id = #{userId}
+        </if>
+        <if test="tripStatus !=null and tripStatus != 0">
+            AND pt.trip_status= #{tripStatus}
+        </if>
+        <if test="approvalStatus !=null and approvalStatus != 0">
+            AND pt.approval_status= #{approvalStatus}
+        </if>
+        <if test="communityId != null and communityId != ''">
+            AND pt.community_id = #{communityId}
+        </if>
+        ORDER BY pt.create_time DESC
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 获取用车记录数量 -->
+    <select id="queryPubCarUseRecordsCount" parameterType="com.java110.dto.pubCarTrip.PubCarTripDto" resultType="int">
+        SELECT COUNT(*)
+        FROM pubcar_trip
+        WHERE status_cd = '0'
+        <if test="userId != null and userId != ''">
+            AND user_id = #{userId}
+        </if>
+        <if test="tripStatus !=null and tripStatus != 0">
+            AND trip_status= #{tripStatus}
+        </if>
+        <if test="approvalStatus !=null and approvalStatus != 0">
+            AND approval_status= #{approvalStatus}
+        </if>
+        <if test="communityId != null and communityId != ''">
+            AND community_id = #{communityId}
+        </if>
+    </select>
+
+    <!-- 根据行程id批量获取行程信息 -->
+    <select id="queryPubCarTripsByTripIdsBatch" parameterType="java.util.List" resultType="com.java110.dto.pubCarTrip.PubCarTripDto">
+        SELECT pt.trip_id tripId, pt.start_time startTime, pt.end_time endTime, pt.approval_status approvalStatus, pt.create_time createTime,
+                pt.community_id communityId, pc.key_cabinet keyCabinet, uu.`name` applicant, uo.org_name department
+        FROM pubcar_trip pt
+        LEFT JOIN pubcar_trip_car_num ptcn ON ptcn.trip_id = pt.trip_id AND ptcn.status_cd = '0'
+        LEFT JOIN pubcar_car pc ON pc.car_id = ptcn.car_id AND pc.status_cd = '0'
+        LEFT JOIN u_user uu ON uu.user_id = pt.user_id AND uu.status_cd = '0'
+        LEFT JOIN u_org_staff_rel uosr ON uosr.staff_id = uu.user_id AND uosr.status_cd = '0'
+        LEFT JOIN u_org uo ON uo.org_id = uosr.org_id AND uo.status_cd = '0'
+        WHERE pt.trip_id IN
+        <foreach collection="list" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </select>
+
+    <!-- 根据车辆id和时间查询司机id -->
+    <select id="getDriverIdByCarIdAndViolationTimeAndCommunityId" parameterType="map" resultType="map">
+        SELECT ptcr.driver_id driverId, pt.user_id userId
+        FROM pubcar_trip_car_num ptcr
+        LEFT JOIN pubcar_trip pt ON ptcr.trip_id = pt.trip_id
+        WHERE ptcr.car_id = #{carId}
+        <![CDATA[AND DATE(pt.start_time) <= #{violationTime}]]>
+        <![CDATA[AND DATE(pt.end_time) >= #{violationTime}]]>
+        AND pt.community_id = #{communityId}
+        AND pt.status_cd = '0'
+    </select>
+
+    <!-- 查询选择行程列表 -->
+    <select id="listChooseTrips" parameterType="com.java110.dto.pubCarTrip.PubCarTripSimpleDto" resultType="com.java110.vo.api.pubCarTrip.ApiChooseTripDataVo">
+        SELECT trip_id tripId, DATE_FORMAT(start_time, '%Y年%c月%e日') startDate, `start`, destination
+        FROM pubcar_trip
+        WHERE community_id = #{communityId}
+          AND status_cd = '0'
+          AND trip_status = 3
+        ORDER BY create_time DESC
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 查询选择行程列表数量 -->
+    <select id="listChooseTripsCount" parameterType="com.java110.dto.pubCarTrip.PubCarTripSimpleDto" resultType="int">
+        SELECT COUNT(1) count
+        FROM pubcar_trip
+        WHERE community_id = #{communityId}
+          AND status_cd = '0'
+          AND trip_status = 3
+    </select>
+
+    <!-- 查询行程实例表信息(撤单用到) -->
+    <select id="getPubCarTripInstanceInfo" parameterType="map" resultType="map">
+        SELECT trip_id tripId, `start`, destination, mileage, start_time startTime, end_time endTime, apply_num applyNum,
+               trip_status tripStatus, approval_status approvalStatus, is_bureau_leader_approve isBureauLeaderApprove, remark, apply_reason applyReason, is_urgent isUrgent,
+               is_daily isDaily, daily_period dailyPeriod, user_id userId, b_id bId, status_cd statusCd, community_id communityId
+        FROM pubcar_trip
+        <where>
+            <if test="bId !=null and bId != ''">
+                b_id = #{bId}
+            </if>
+            <if test="statusCd !=null and statusCd != ''">
+                and status_cd = #{statusCd}
+            </if>
+        </where>
+    </select>
+
+    <!-- 数据看板中明天或未来7天内用车数据统计 -->
+    <select id="queryPubCarDataScreenTomorrowOrOneWeekCarUseStatistics" parameterType="map" resultType="map">
+        SELECT t.trip_id tripId, n.trip_type tripType,
+               IFNULL(SUM(m.avgMileage), 0) tripMileage
+        FROM pubcar_trip t
+        LEFT JOIN pubcar_trip_car_num n ON n.trip_id = t.trip_id
+        LEFT JOIN (
+            SELECT trip_id, AVG(pass_mileage) avgMileage
+            FROM pubcar_trip_mileage
+            GROUP BY trip_id
+        ) m ON m.trip_id = n.trip_id
+        WHERE t.status_cd = '0'
+        <if test="flag !=null and flag == 1">
+            AND DATE(t.start_time) = CURRENT_DATE() + 1
+        </if>
+        <if test="flag !=null and flag == 2">
+            <![CDATA[ AND DATEDIFF(DATE(t.start_time), CURRENT_DATE()) >= 0 AND DATEDIFF(DATE(t.start_time), CURRENT_DATE()) <= 7]]>
+        </if>
+    </select>
+
+    <!-- 数据看板当天用车数据统计 -->
+    <select id="queryPubCarDataScreenTodayCarUseStatistics" parameterType="map" resultType="map">
+        SELECT trip_id tripId, trip_status tripStatus, approval_status	approvalStatus
+        FROM pubcar_trip
+        WHERE status_cd = '0' AND DATE(start_time) = CURRENT_DATE()
+    </select>
+
+    <!-- 数据看板中用车数据数量 -->
+    <select id="queryPubCarDataScreenCarUseDataCount" parameterType="map" resultType="map">
+        SELECT count(1) count
+        FROM pubcar_trip t
+        LEFT JOIN pubcar_trip_car_num n ON n.trip_id = t.trip_id
+        LEFT JOIN pubcar_driver d ON d.driver_id = n.driver_id
+        LEFT JOIN pubcar_car c ON c.car_id = n.car_id
+        WHERE t.status_cd = '0' AND t.approval_status = 3
+        /*今天*/
+        <if test="symbol !=null and symbol == 1">
+            AND DATE(t.start_time) = CURRENT_DATE()
+        </if>
+        /*明天*/
+        <if test="symbol !=null and symbol == 2">
+            AND DATE(t.start_time) = CURRENT_DATE() + 1
+        </if>
+        /*未来7天*/
+        <if test="symbol !=null and symbol == 3">
+            <![CDATA[ AND DATEDIFF(DATE(t.start_time), CURRENT_DATE()) >= 0 AND DATEDIFF(DATE(t.start_time), CURRENT_DATE()) <= 7 ]]>
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            and t.community_id = #{communityId}
+        </if>
+    </select>
+
+    <!-- 数据看板中用车数据 -->
+    <select id="queryPubCarDataScreenCarUseData" parameterType="map" resultType="com.java110.vo.api.pubCarDataScreen.CarTripDataVo">
+        SELECT t.trip_id tripId, t.start_time departureTime, t.`start` departure, t.destination, n.trip_type tripType, c.model, c.license, d.`name` driver, t.user_id userId
+        FROM pubcar_trip t
+        LEFT JOIN pubcar_trip_car_num n ON n.trip_id = t.trip_id
+        LEFT JOIN pubcar_driver d ON d.driver_id = n.driver_id
+        LEFT JOIN pubcar_car c ON c.car_id = n.car_id
+        WHERE t.status_cd = '0' AND t.approval_status = 3
+        /*今天*/
+        <if test="symbol !=null and symbol == 1">
+            AND DATE(t.start_time) = CURRENT_DATE()
+        </if>
+        /*明天*/
+        <if test="symbol !=null and symbol == 2">
+            AND DATE(t.start_time) = CURRENT_DATE() + 1
+        </if>
+        /*未来7天*/
+        <if test="symbol !=null and symbol == 3">
+            <![CDATA[ AND DATEDIFF(DATE(t.start_time), CURRENT_DATE()) >= 0 AND DATEDIFF(DATE(t.start_time), CURRENT_DATE()) <= 7 ]]>
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            and t.community_id = #{communityId}
+        </if>
+        ORDER BY t.start_time DESC
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 数据看板中数据总览单日用车峰值、日均行程数的信息 -->
+    <select id="queryPubCarDataScreenSingleDayOverview" parameterType="map" resultType="map">
+        SELECT IFNULL(MAX(b.count), 0) peakSingleDayCar,
+                IFNULL(ROUND(AVG(b.count)), 0) averageTripsPerDay
+        FROM (
+            SELECT DATE(a.start_time) dayGroup, count(1) count
+            FROM pubcar_trip a
+            WHERE a.status_cd = '0' and a.approval_status = 3
+            <if test="communityId !=null and communityId != ''">
+                and a.community_id = #{communityId}
+            </if>
+            <if test="startTime !=null">
+                <![CDATA[ and DATE(a.start_time) >= #{startTime}]]>
+            </if>
+            <if test="endTime !=null">
+                <![CDATA[ and DATE(a.end_time) <= #{endTime}]]>
+            </if>
+            GROUP BY DATE(a.start_time)
+        ) b
+    </select>
+
+    <!-- 数据看板中数据总览行程的信息 -->
+    <select id="queryPubCarDataScreenOverview" parameterType="map" resultType="com.java110.vo.api.pubCarDataScreen.ApiPubCarDataScreenOverviewAndAnalysisDataVo">
+        SELECT t.trip_id, COUNT(DISTINCT t.trip_id) tripNum,
+                IFNULL(ROUND(SUM(a.avgMileage),1), 0) tripMileage,
+                IFNULL(ROUND(SUM(a.avgDuration)), 0) drivingTime,
+                IFNULL(ROUND(AVG(a.avgMileage),1), 0) averageMileage,
+                IFNULL(ROUND(AVG(a.avgDuration)), 0) averageTravelTime
+        FROM pubcar_trip t
+        LEFT JOIN (
+            SELECT trip_id, AVG(pass_mileage) avgMileage, AVG(duration) avgDuration
+            FROM pubcar_trip_mileage
+            GROUP BY trip_id
+        ) a ON a.trip_id = t.trip_id
+        WHERE t.status_cd = '0' and t.trip_status = 3
+        <if test="communityId !=null and communityId != ''">
+            and t.community_id = #{communityId}
+        </if>
+        <if test="startTime !=null">
+            <![CDATA[ and t.start_time >= #{startTime}]]>
+        </if>
+        <if test="endTime !=null">
+            <![CDATA[ and t.end_time <= #{endTime}]]>
+        </if>
+    </select>
+
+    <!-- 车辆统计中查询车辆完成的行程列表 -->
+    <select id="queryCarTripStatistics" parameterType="com.java110.dto.pubCarTrip.PubCarTripSimpleDto" resultType="com.java110.vo.api.pubCarTrip.ApiCarTripStatisticsDataVo">
+        SELECT t.trip_id tripId, uu.`name` applicant, t.`start`, t.destination, t.start_time startTime, t.end_time endTime,
+               n.is_self isSelf, n.passenger_num passengerNum, d.`name` driver, m.pass_mileage drivenDistance, m.duration drivingTime
+        FROM pubcar_trip t
+        LEFT JOIN u_user uu ON uu.user_id = t.user_id AND uu.status_cd = '0'
+        LEFT JOIN pubcar_trip_car_num n ON n.trip_id = t.trip_id
+        LEFT JOIN pubcar_car c ON c.car_id = n.car_id AND c.status_cd = '0'
+        LEFT JOIN pubcar_driver d ON d.driver_id = n.driver_id AND d.status_cd = '0'
+        LEFT JOIN pubcar_trip_mileage m ON m.trip_id = n.trip_id AND m.driver_id = n.driver_id AND m.status_cd = '0'
+        WHERE t.status_cd = '0'
+          AND c.car_id =  #{carId}
+          AND t.community_id = #{communityId}
+        <if test="applicant !=null and applicant != ''">
+            and uu.name like concat('%',#{applicant},'%')
+        </if>
+        <if test="driver !=null and driver != ''">
+            and d.name like concat('%',#{driver},'%')
+        </if>
+        <if test="tripType !=null">
+            and n.trip_type = #{tripType}
+        </if>
+        <if test="lessStartTime !=null">
+            <![CDATA[ and m.start_time >= #{lessStartTime}]]>
+        </if>
+        <if test="moreStartTime !=null">
+            <![CDATA[ and m.start_time <= #{moreStartTime}]]>
+        </if>
+        <if test="lessEndTime !=null">
+            <![CDATA[ and m.end_time >= #{lessEndTime}]]>
+        </if>
+        <if test="moreEndTime !=null">
+            <![CDATA[ and m.end_time <= #{moreEndTime}]]>
+        </if>
+        order by t.create_time desc
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 车辆统计中查询车辆完成的行程列表数量 -->
+    <select id="queryCarTripStatisticsCount" parameterType="com.java110.dto.pubCarTrip.PubCarTripSimpleDto" resultType="map">
+        SELECT COUNT(1) count
+        FROM pubcar_trip t
+        LEFT JOIN u_user uu ON uu.user_id = t.user_id AND uu.status_cd = '0'
+        LEFT JOIN pubcar_trip_car_num n ON n.trip_id = t.trip_id
+        LEFT JOIN pubcar_car c ON c.car_id = n.car_id AND c.status_cd = '0'
+        LEFT JOIN pubcar_driver d ON d.driver_id = n.driver_id AND d.status_cd = '0'
+        LEFT JOIN pubcar_trip_mileage m ON m.trip_id = n.trip_id AND m.driver_id = n.driver_id AND m.status_cd = '0'
+        WHERE t.status_cd = '0'
+            AND c.car_id = #{carId}
+            AND t.community_id = #{communityId}
+        <if test="applicant !=null and applicant != ''">
+            and uu.name like concat('%',#{applicant},'%')
+        </if>
+        <if test="driver !=null and driver != ''">
+            and d.name like concat('%',#{driver},'%')
+        </if>
+        <if test="tripType !=null">
+            and n.trip_type = #{tripType}
+        </if>
+        <if test="lessStartTime !=null">
+            <![CDATA[ and m.start_time >= #{lessStartTime}]]>
+        </if>
+        <if test="moreStartTime !=null">
+            <![CDATA[ and m.start_time <= #{moreStartTime}]]>
+        </if>
+        <if test="lessEndTime !=null">
+            <![CDATA[ and m.end_time >= #{lessEndTime}]]>
+        </if>
+        <if test="moreEndTime !=null">
+            <![CDATA[ and m.end_time <= #{moreEndTime}]]>
+        </if>
+    </select>
+
+    <!-- 司机用车统计或部门用车统计中查询完成的行程信息 -->
+    <select id="queryPubCarSimpleTrips" parameterType="com.java110.dto.pubCarTrip.PubCarTripSimpleDto" resultType="com.java110.vo.api.pubCarTrip.ApiSimpleTripDataVo">
+        SELECT t.trip_id tripId, uu.name applicant, t.start, t.destination, m.start_time startTime, m.end_time endTime, n.is_self isSelf, t.apply_num applyNum, c.license, m.duration drivingTime, t.create_time createTime
+        FROM pubcar_trip t
+        LEFT JOIN pubcar_trip_mileage m ON m.trip_id = t.trip_id
+        LEFT JOIN pubcar_trip_car_num n ON m.driver_id = n.driver_id AND n.trip_id = m.trip_id
+        LEFT JOIN pubcar_car c ON c.car_id = n.car_id
+        LEFT JOIN u_user uu ON uu.user_id = t.user_id
+        LEFT JOIN u_org_staff_rel uosr ON uosr.staff_id = uu.user_id
+        LEFT JOIN u_org uo ON uo.org_id = uosr.org_id
+        WHERE t.trip_status = 3 and t.status_cd = '0' and m.status_cd = '0' and c.status_cd = '0' and uu.status_cd = '0' and uosr.status_cd = '0' and uo.status_cd = '0'
+        <if test="applicant !=null and applicant != ''">
+            and uu.name like concat('%',#{applicant},'%')
+        </if>
+        <if test="start !=null and start != ''">
+            and t.start like concat('%',#{start},'%')
+        </if>
+        <if test="destination !=null and destination != ''">
+            and t.destination like concat('%',#{destination},'%')
+        </if>
+        <if test="startTime !=null">
+            <![CDATA[ and t.start_time >= #{startTime}]]>
+        </if>
+        <if test="endTime !=null">
+            <![CDATA[ and t.end_time <= #{endTime}]]>
+        </if>
+        <if test="license !=null and license != ''">
+            and c.license like concat('%',#{license},'%')
+        </if>
+        <if test="applyNum !=null">
+            and t.apply_num = #{applyNum}
+        </if>
+        <if test="driverId !=null and driverId != ''">
+            and m.driver_id = #{driverId}
+        </if>
+        <if test="departmentId !=null and departmentId != ''">
+            and uo.org_id = #{departmentId}
+        </if>
+        order by t.create_time desc
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 司机用车统计或部门用车统计中查询司机完成的行程数 -->
+    <select id="queryPubCarSimpleTripsCount" resultType="map" parameterType="com.java110.dto.pubCarTrip.PubCarTripSimpleDto">
+        SELECT COUNT(1) count
+        FROM pubcar_trip t
+        LEFT JOIN pubcar_trip_mileage m ON m.trip_id = t.trip_id
+        LEFT JOIN pubcar_trip_car_num n ON m.driver_id = n.driver_id AND n.trip_id = m.trip_id
+        LEFT JOIN pubcar_car c ON c.car_id = n.car_id
+        LEFT JOIN u_user uu ON uu.user_id = t.user_id
+        LEFT JOIN u_org_staff_rel uosr ON uosr.staff_id = uu.user_id
+        LEFT JOIN u_org uo ON uo.org_id = uosr.org_id
+        WHERE t.trip_status = 3 and t.status_cd = '0' and m.status_cd = '0' and c.status_cd = '0' and uu.status_cd = '0' and uosr.status_cd = '0' and uo.status_cd = '0'
+        <if test="applicant !=null and applicant != ''">
+            and uu.name like concat('%',#{applicant},'%')
+        </if>
+        <if test="start !=null and start != ''">
+            and t.start like concat('%',#{start},'%')
+        </if>
+        <if test="destination !=null and destination != ''">
+            and t.destination like concat('%',#{destination},'%')
+        </if>
+        <if test="startTime !=null">
+            <![CDATA[ and t.start_time >= #{startTime}]]>
+        </if>
+        <if test="endTime !=null">
+            <![CDATA[ and t.end_time <= #{endTime}]]>
+        </if>
+        <if test="license !=null and license != ''">
+            and c.license like concat('%',#{license},'%')
+        </if>
+        <if test="applyNum !=null">
+            and t.apply_num = #{applyNum}
+        </if>
+        <if test="driverId !=null and driverId != ''">
+            and m.driver_id = #{driverId}
+        </if>
+        <if test="departmentId !=null and departmentId != ''">
+            and uo.org_id = #{departmentId}
+        </if>
+    </select>
+
+    <!-- 查询行车业务表信息 -->
+    <select id="getBusinessPubCarTripInfo" parameterType="map" resultType="map">
+        select b_id bId, trip_id tripId, user_id userId, car_type carType, `start`, destination, start_time startTime, end_time endTime,
+        apply_num applyNum, trip_status tripStatus, approval_status approvalStatus, is_bureau_leader_approve isBureauLeaderApprove,
+        is_depart_leader_approve isDepartLeaderApprove, remark, apply_reason applyReason,is_urgent isUrgent, is_daily isDaily,
+        daily_period dailyPeriod, operate, community_id communityId, car_type_detail carTypeDetail
+        from business_pubcar_trip
+        <where>
+            <if test="bId !=null and bId != ''">
+                b_id= #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and operate= #{operate}
+            </if>
+        </where>
+    </select>
+
+    <!-- 保存行程管理业务表信息 add by hh -->
+    <insert id="saveBusinessPubCarTripInfo" parameterType="Map">
+        insert into business_pubcar_trip(b_id, trip_id, user_id, car_type, car_type_detail, `start`, destination, mileage, start_time, end_time,apply_num, trip_status,
+                                         approval_status, is_bureau_leader_approve, is_depart_leader_approve, remark, apply_reason, is_urgent,
+                                         is_daily, daily_period, operate, community_id)
+        values (#{bId}, #{tripId}, #{userId}, #{carType}, #{carTypeDetail}, #{start}, #{destination}, #{mileage}, #{startTime},
+                #{endTime}, #{applyNum}, #{tripStatus}, #{approvalStatus}, #{isBureauLeaderApprove}, #{isDepartLeaderApprove}, #{remark}, #{applyReason}, #{isUrgent},
+                #{isDaily}, #{dailyPeriod}, #{operate}, #{communityId})
+    </insert>
+
+    <!-- 保存行程管理表信息 add by hh -->
+    <insert id="savePubCarTripInfo" parameterType="Map">
+        insert into pubcar_trip(b_id, trip_id, user_id, car_type, car_type_detail, `start`, destination, mileage, start_time, end_time,
+        apply_num, trip_status, approval_status, apply_reason, is_urgent, is_daily, daily_period, status_cd,
+        community_id)
+        select b_id, trip_id, user_id, car_type, car_type_detail, `start`, destination, mileage, start_time, end_time,
+        apply_num, trip_status, approval_status, apply_reason, is_urgent, is_daily, daily_period, '0',
+        community_id
+        from business_pubcar_trip
+        <where>
+            <if test="bId !=null and bId != ''">
+                b_id= #{bId}
+            </if>
+            <if test="operate !=null and operate != ''">
+                and operate= #{operate}
+            </if>
+        </where>
+    </insert>
+
+    <!-- 查询行程管理表信息 add by hh  is_urgent desc,-->
+    <resultMap id="tripInfo" type="com.java110.vo.api.pubCarTrip.ApiPubCarTripDataVo">
+        <id property="tripId" column="tripId"/>
+        <result property="start" column="start"/>
+        <result property="destination" column="destination"/>
+        <result property="startTime" column="startTime"/>
+        <result property="endTime" column="endTime"/>
+        <result property="carType" column="carType"/>
+        <result property="applyNum" column="applyNum"/>
+        <result property="tripStatus" column="tripStatus"/>
+        <result property="approvalStatus" column="approvalStatus"/>
+        <result property="isBureauLeaderApprove" column="isBureauLeaderApprove"/>
+        <result property="isDepartLeaderApprove" column="isDepartLeaderApprove"/>
+        <result property="remark" column="remark"/>
+        <result property="applyReason" column="applyReason"/>
+        <result property="isUrgent" column="isUrgent"/>
+        <result property="isDaily" column="isDaily"/>
+        <result property="dailyPeriod" column="dailyPeriod"/>
+        <result property="applicant" column="applicant"/>
+        <result property="applicantId" column="applicantId"/>
+        <result property="tel" column="tel"/>
+        <result property="department" column="department"/>
+        <result property="position" column="position"/>
+        <result property="applicationTime" column="applicationTime"/>
+        <result property="startMileage" column="startMileage"/>
+        <result property="endMileage" column="endMileage"/>
+        <result property="passMileage" column="passMileage"/>
+        <result property="runRange" column="runRange"/>
+        <result property="repairFee" column="repairFee"/>
+        <result property="oilFee" column="oilFee"/>
+        <result property="parkingFee" column="parkingFee"/>
+        <result property="roadBridgeFee" column="roadBridgeFee"/>
+        <collection property="carNumDataVos" ofType="com.java110.vo.api.pubCarTripCarNum.ApiPubCarTripCarNumDataVo">
+            <id property="numId" column="numId"/>
+            <result property="tripType" column="tripType"/>
+            <result property="passengerNum" column="passengerNum"/>
+            <result property="carId" column="carId"/>
+            <result property="driverId" column="driverId"/>
+            <collection property="passengerDataVos" ofType="com.java110.vo.api.pubCarTripCarPassenger.ApiPubCarTripCarPassengerDataVo">
+                <id property="passengerId" column="passengerId"/>
+                <result property="passengerName" column="passengerName"/>
+                <result property="passengerDepartment" column="passengerDepartment"/>
+                <result property="passengerPosition" column="passengerPosition"/>
+            </collection>
+        </collection>
+    </resultMap>
+    <select id="getPubCarTripInfo" parameterType="com.java110.dto.pubCarTrip.PubCarTripDto" resultMap="tripInfo">
+        SELECT t.trip_id tripId, t.start, t.destination, t.start_time startTime, t.end_time endTime, t.apply_num
+        applyNum, t.trip_status tripStatus, t.approval_status approvalStatus, t.is_bureau_leader_approve isBureauLeaderApprove,
+        t.remark, t.apply_reason applyReason, t.is_urgent isUrgent, t.is_daily isDaily, t.daily_period dailyPeriod,
+        t.create_time applicationTime, t.is_depart_leader_approve isDepartLeaderApprove, t.user_id applicantId,
+        uu.name applicant, uu.tel, uo.org_name department, d.name `position`, n.num_id numId, n.trip_type tripType,
+        n.passenger_num passengerNum,
+        p.passenger_id passengerId, p.passenger_name passengerName, p.passenger_department passengerDepartment,
+        p.passenger_position passengerPosition, n.car_id carId,n.driver_id driverId, n.no, t.car_type carType,
+        ptm.start_mileage startMileage, ptm.end_mileage endMileage, ptm.pass_mileage passMileage, ptm.run_range runRange,
+        ptm.repair_fee repairFee, ptm.oil_fee oilFee, ptm.parking_fee parkingFee, ptm.road_bridge_fee roadBridgeFee
+        FROM pubcar_trip t
+        LEFT JOIN pubcar_trip_car_num n on n.trip_id = t.trip_id
+        LEFT JOIN pubcar_trip_car_passenger p on p.num_id = n.num_id
+        LEFT JOIN pubcar_trip_mileage ptm ON ptm.trip_id = n.trip_id AND ptm.driver_id = n.driver_id
+        LEFT JOIN u_user uu ON uu.user_id = t.user_id AND uu.status_cd = '0'
+        LEFT JOIN u_org_staff_rel r ON r.staff_id = uu.user_id AND r.status_cd = '0'
+        LEFT JOIN u_org uo ON uo.org_id = r.org_id AND uo.status_cd = '0'
+        LEFT JOIN t_dict d ON d.status_cd = r.rel_cd AND d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd'
+        WHERE t.status_cd= '0'
+        and t.trip_id in (
+            select temp.id
+            from(
+                select t.trip_id id
+                from pubcar_trip t
+                LEFT JOIN (
+                    SELECT trip_id, GROUP_CONCAT(trip_type SEPARATOR ',') tripType
+                    FROM pubcar_trip_car_num
+                    GROUP BY trip_id
+                ) n ON n.trip_id = t.trip_id
+                LEFT JOIN u_user uu ON uu.user_id = t.user_id AND uu.status_cd = '0'
+                LEFT JOIN u_org_staff_rel r ON r.staff_id = uu.user_id AND r.status_cd = '0'
+                LEFT JOIN u_org uo ON uo.org_id = r.org_id AND uo.status_cd = '0'
+                LEFT JOIN t_dict d ON d.status_cd = r.rel_cd AND d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd'
+                WHERE t.status_cd= '0'
+                <if test="userId !=null and userId != ''">
+                    and t.user_id = #{userId}
+                </if>
+                <if test="applicant !=null and applicant != ''">
+                    and uu.name like concat('%',#{applicant},'%')
+                </if>
+                <if test="tel !=null and tel != ''">
+                    and uu.tel like concat('%',#{tel},'%')
+                </if>
+                <if test="start !=null and start != ''">
+                    and t.start like concat('%',#{start},'%')
+                </if>
+                <if test="destination !=null and destination != ''">
+                    and t.destination like concat('%',#{destination},'%')
+                </if>
+                <if test="applyNum !=null">
+                    and t.apply_num= #{applyNum}
+                </if>
+                <if test="isUrgent !=null">
+                    and t.is_urgent= #{isUrgent}
+                </if>
+                <if test="department !=null and department != ''">
+                    and uo.org_name like concat('%',#{department},'%')
+                </if>
+                <if test="position !=null and position != ''">
+                    and d.name like concat('%',#{position},'%')
+                </if>
+                <if test="tripType !=null">
+                    and n.tripType = #{tripType}
+                </if>
+                <if test="tripStatus !=null and tripStatus != 0">
+                    and t.trip_status= #{tripStatus}
+                </if>
+                <if test="approvalStatus !=null and approvalStatus != 0">
+                    and t.approval_status= #{approvalStatus}
+                </if>
+                <if test="applyTimeStart !=null">
+                    <![CDATA[ and t.start_time >= #{applyTimeStart}]]>
+                </if>
+                <if test="applyTimeEnd !=null">
+                    <![CDATA[ and t.end_time <= #{applyTimeEnd}]]>
+                </if>
+                <if test="tripId !=null and tripId != ''">
+                    and t.trip_id= #{tripId}
+                </if>
+                <if test="tripIds != null and tripIds.size() >0">
+                    and t.trip_id in
+                    <foreach collection="tripIds" item="item" separator="," open="(" close=")">
+                        #{item}
+                    </foreach>
+                </if>
+                <if test="communityId !=null and communityId != ''">
+                    and t.community_id= #{communityId}
+                </if>
+                order by
+                <if test="sort !=null and sort != ''">
+                    start_time ${sort},
+                </if>
+                t.create_time desc
+                <if test="tripIds == null or tripIds.size() == 0">
+                    limit #{page}, #{row}
+                </if>
+            ) as temp
+        )
+    </select>
+
+    <!-- 移动端查询司机行程信息数量 -->
+    <select id="queryPubCarDriverTripsCount" parameterType="com.java110.dto.pubCarTrip.PubCarTripSimpleDto" resultType="map">
+        SELECT COUNT(DISTINCT t.trip_id) count
+        FROM pubcar_trip t
+        LEFT JOIN pubcar_trip_car_num n ON n.trip_id = t.trip_id
+        LEFT JOIN pubcar_trip_car_passenger p ON p.num_id = n.num_id
+        WHERE t.status_cd= '0'
+        <if test="driverId != null and driverId != ''">
+            and (p.user_id = #{driverId} or t.user_id = #{driverId})
+        </if>
+        <if test="tripStatus != null and tripStatus == '1'.toString()">
+            and (t.trip_status = 1 or t.trip_status = 2)
+        </if>
+        <if test="tripStatus != null and tripStatus == '3'.toString()">
+            and t.trip_status = 3
+        </if>
+        <if test="communityId != null and communityId != ''">
+            and t.community_id = #{communityId}
+        </if>
+    </select>
+
+    <!-- 移动端查询司机行程信息
+    t.is_urgent isUrgent,t.is_daily isDaily,t.apply_reason applyReason,t.remark,t.daily_period dailyPeriod,uu.tel, uo.org_name department,
+    d.name position,, n.no,p.passenger_department passengerDepartment,p.passenger_position passengerPosition,
+
+    LEFT JOIN u_org_staff_rel r ON r.staff_id = uu.user_id AND r.status_cd = '0'
+        LEFT JOIN u_org uo ON uo.org_id = r.org_id AND uo.status_cd = '0'
+        LEFT JOIN t_dict d ON d.status_cd = r.rel_cd AND d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd'
+    -->
+    <select id="queryPubCarDriverTrips" parameterType="com.java110.dto.pubCarTrip.PubCarTripSimpleDto" resultMap="tripInfo">
+        SELECT t.trip_id         tripId,
+               t.start,
+               t.destination,
+               t.start_time      startTime,
+               t.end_time        endTime,
+               t.apply_num       applyNum,
+               t.trip_status     tripStatus,
+               t.approval_status approvalStatus,
+               t.create_time     applicationTime,
+               uu.name            applicant,
+            n.num_id numId, n.trip_type tripType,n.passenger_num passengerNum,n.driver_id driverId,
+            p.passenger_id passengerId, p.passenger_name passengerName, n.car_id carId
+        FROM pubcar_trip t
+        LEFT JOIN pubcar_trip_car_num n ON n.trip_id = t.trip_id
+        LEFT JOIN pubcar_trip_car_passenger p ON p.num_id = n.num_id
+        LEFT JOIN u_user uu ON uu.user_id = t.user_id AND uu.status_cd = '0'
+        WHERE t.status_cd= '0'
+        AND t.trip_id IN (
+            SELECT temp.id
+            FROM(
+                SELECT t.trip_id id
+                FROM pubcar_trip t
+                LEFT JOIN pubcar_trip_car_num n ON n.trip_id = t.trip_id
+                LEFT JOIN pubcar_trip_car_passenger p ON p.num_id = n.num_id
+                WHERE t.status_cd= '0' AND t.approval_status = 3
+                <if test="driverId != null and driverId != ''">
+                    and (p.user_id = #{driverId} or t.user_id = #{driverId})
+                </if>
+                <if test="tripStatus != null and tripStatus == 1">
+                    and (t.trip_status = 1 or t.trip_status = 2)
+                </if>
+                <if test="tripStatus != null and tripStatus == 3">
+                    and t.trip_status = 3
+                </if>
+                <if test="communityId != null and communityId != ''">
+                    and t.community_id = #{communityId}
+                </if>
+                ORDER BY t.trip_status DESC, t.create_time DESC
+                <if test="page != -1 and page != null ">
+                    limit #{page}, #{row}
+                </if>
+            ) AS temp
+        )
+        ORDER BY t.trip_status DESC, t.create_time DESC
+    </select>
+
+    <!-- 修改行程管理表信息 add by hh -->
+    <update id="updatePubCarTripInfo" parameterType="Map">
+        update pubcar_trip t set t.status_cd = #{statusCd}
+        <if test="newBId != null and newBId != ''">
+            ,t.b_id = #{newBId}
+        </if>
+        <if test="approvalStatus !=null">
+            , t.approval_status= #{approvalStatus}
+        </if>
+        <if test="remark !=null and remark != ''">
+            , t.remark= #{remark}
+        </if>
+        <if test="tripStatus !=null">
+            , t.trip_status= #{tripStatus}
+        </if>
+        <if test="isBureauLeaderApprove != null">
+            , t.is_bureau_leader_approve = #{isBureauLeaderApprove}
+        </if>
+        <if test="isDepartLeaderApprove != null">
+            , t.is_depart_leader_approve = #{isDepartLeaderApprove}
+        </if>
+        <where>
+            <if test="tripId !=null and tripId != ''">
+                t.trip_id= #{tripId}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+        </where>
+    </update>
+
+    <!-- 查询行程管理表数量 add by hh -->
+    <select id="queryPubCarTripsCount" parameterType="com.java110.dto.pubCarTrip.PubCarTripDto" resultType="Map">
+        SELECT count(1) count
+        FROM pubcar_trip t
+        LEFT JOIN (
+            SELECT trip_id, GROUP_CONCAT(trip_type SEPARATOR ',') tripType
+            FROM pubcar_trip_car_num
+            GROUP BY trip_id
+        ) n ON n.trip_id = t.trip_id
+        LEFT JOIN u_user uu ON uu.user_id = t.user_id AND uu.status_cd = '0'
+        LEFT JOIN u_org_staff_rel r ON r.staff_id = uu.user_id AND r.status_cd = '0'
+        LEFT JOIN u_org uo ON uo.org_id = r.org_id AND uo.status_cd = '0'
+        LEFT JOIN t_dict d ON d.status_cd = r.rel_cd AND d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd'
+        WHERE t.status_cd= '0'
+        <if test="userId !=null and userId != ''">
+            and t.user_id = #{userId}
+        </if>
+        <if test="applicant !=null and applicant != ''">
+            and uu.name like concat('%',#{applicant},'%')
+        </if>
+        <if test="tel !=null and tel != ''">
+            and uu.tel like concat('%',#{tel},'%')
+        </if>
+        <if test="start !=null and start != ''">
+            and t.start like concat('%',#{start},'%')
+        </if>
+        <if test="destination !=null and destination != ''">
+            and t.destination like concat('%',#{destination},'%')
+        </if>
+        <if test="applyNum !=null">
+            and t.apply_num= #{applyNum}
+        </if>
+        <if test="isUrgent !=null">
+            and t.is_urgent= #{isUrgent}
+        </if>
+        <if test="department !=null and department != ''">
+            and uo.org_name like concat('%',#{department},'%')
+        </if>
+        <if test="position !=null and position != ''">
+            and d.name like concat('%',#{position},'%')
+        </if>
+        <if test="tripType !=null">
+            and n.tripType = #{tripType}
+        </if>
+        <if test="tripStatus !=null and tripStatus != 0">
+            and t.trip_status= #{tripStatus}
+        </if>
+        <if test="approvalStatus !=null and approvalStatus != 0">
+            and t.approval_status= #{approvalStatus}
+        </if>
+        <if test="applyTimeStart !=null">
+            <![CDATA[ and t.start_time >= #{applyTimeStart}]]>
+        </if>
+        <if test="applyTimeEnd !=null">
+            <![CDATA[ and t.end_time <= #{applyTimeEnd}]]>
+        </if>
+        <if test="tripId !=null and tripId != ''">
+            and t.trip_id= #{tripId}
+        </if>
+        <if test="tripIds != null and tripIds.size() >0">
+            and t.trip_id in
+            <foreach collection="tripIds" item="item" separator="," open="(" close=")">
+                #{item}
+            </foreach>
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            and t.community_id= #{communityId}
+        </if>
+    </select>
+
+</mapper>

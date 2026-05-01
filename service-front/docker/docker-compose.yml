@@ -1,0 +1,30 @@
+version: '2'
+services:
+   frontserivce:
+       container_name: frontserivce-1
+       build:
+          context: .
+          dockerfile: Dockerfile
+       restart: always
+       ports:
+       - "8012:8012"
+       volumes:
+       - ../target/service-front.jar:/root/target/service-front.jar
+#       networks:
+#       - java110-net
+#       mem_limit: 1024m
+       extra_hosts:
+       - "dev.java110.com:192.168.0.181"
+       - "dev.db.java110.com:192.168.0.181"
+       - "dev.zk.java110.com:192.168.0.181"
+       - "dev.kafka.java110.com:192.168.0.181"
+       - "dev.redis.java110.com:192.168.0.181"
+       - "prod.java110.com:192.168.0.181"
+       - "prod.db.java110.com:192.168.0.181"
+       - "prod.zk.java110.com:192.168.0.181"
+       - "prod.kafka.java110.com:192.168.0.181"
+       - "prod.redis.java110.com:192.168.0.181"
+       - "api.java110.com:192.168.0.181"
+#networks:
+#  java110-net:
+#    external: true

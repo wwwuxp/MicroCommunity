@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubCarRepairServiceDaoImpl">
+
+    <!-- 获取车辆维修业务表信息 -->
+    <select id="getBusinessPubCarRepairInfo" parameterType="map" resultType="map">
+        select b_id bId, repair_id repairId, `date`, content, price, declarant, car_id carId, operate, community_id communityId
+        from business_pubcar_car_repair
+        where b_id = #{bId} and operate= #{operate}
+    </select>
+
+    <!-- 保存车辆维修业务信息 -->
+    <insert id="saveBusinessPubCarRepairInfo" parameterType="map">
+        insert into business_pubcar_car_repair(b_id, repair_id, `date`, content, price, declarant, car_id, operate, community_id)
+        values (#{bId}, #{repairId}, #{date}, #{content}, #{price}, #{declarant}, #{carId}, #{operate}, #{communityId})
+    </insert>
+
+    <!-- 保存车辆维修信息表信息 add by hh -->
+    <insert id="savePubCarRepairInfo" parameterType="Map">
+        insert into pubcar_car_repair(repair_id, date, content, price, declarant, car_id, b_id, community_id, status_cd)
+        select repair_id, date, content, price, declarant, car_id, b_id, community_id, '0'
+        from business_pubcar_car_repair
+        where b_id = #{bId} and operate= #{operate}
+    </insert>
+
+    <!-- 查询车辆维修信息表信息 add by hh -->
+    <select id="getPubCarRepairInfo" parameterType="Map" resultType="Map">
+        select t.date,t.create_time,t.create_time createTime,t.price,t.repair_id,t.repair_id
+        repairId,t.status_cd,t.status_cd statusCd,t.b_id,t.b_id bId,t.community_id,t.community_id
+        communityId,t.content,t.declarant,t.car_id,t.car_id carId
+        from pubcar_car_repair t
+        <where>
+            <if test="statusCd !=null and statusCd != ''">
+                t.status_cd= #{statusCd}
+            </if>
+            <if test="date !=null and date != ''">
+                and t.date= #{date}
+            </if>
+            <if test="createTime !=null and createTime != ''">
+                and t.create_time= #{createTime}
+            </if>
+            <if test="price !=null and price != ''">
+                and t.price= #{price}
+            </if>
+            <if test="repairId !=null and repairId != ''">
+                and t.repair_id= #{repairId}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+            <if test="communityId !=null and communityId != ''">
+                and t.community_id= #{communityId}
+            </if>
+            <if test="content !=null and content != ''">
+                and t.content like concat('%',#{content},'%')
+            </if>
+            <if test="declarant !=null and declarant != ''">
+                and t.declarant like concat('%',#{declarant},'%')
+            </if>
+            <if test="carId !=null and carId != ''">
+                and t.car_id= #{carId}
+            </if>
+        </where>
+        order by t.create_time desc
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+
+    </select>
+
+    <!-- 修改车辆维修信息表信息 add by hh -->
+    <update id="updatePubCarRepairInfo" parameterType="Map">
+        update pubcar_car_repair t set t.status_cd = #{statusCd}
+        <if test="newBId != null and newBId != ''">
+            ,t.b_id = #{newBId}
+        </if>
+        <if test="date !=null and date != ''">
+            , t.date= #{date}
+        </if>
+        <if test="createTime !=null and createTime != ''">
+            , t.create_time= #{createTime}
+        </if>
+        <if test="price !=null and price != ''">
+            , t.price= #{price}
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            , t.community_id= #{communityId}
+        </if>
+        <if test="content !=null and content != ''">
+            , t.content= #{content}
+        </if>
+        <if test="declarant !=null and declarant != ''">
+            , t.declarant= #{declarant}
+        </if>
+        <if test="carId !=null and carId != ''">
+            , t.car_id= #{carId}
+        </if>
+        <where>
+            <if test="repairId !=null and repairId != ''">
+                t.repair_id= #{repairId}
+            </if>
+            <if test="bId !=null and bId != ''">
+                and t.b_id= #{bId}
+            </if>
+        </where>
+    </update>
+
+    <!-- 查询车辆维修信息表数量 add by hh -->
+    <select id="queryPubCarRepairsCount" parameterType="Map" resultType="Map">
+        select count(1) count
+        from pubcar_car_repair t
+        where t.status_cd = '0'
+        <if test="date !=null and date != ''">
+            and t.date= #{date}
+        </if>
+        <if test="createTime !=null and createTime != ''">
+            and t.create_time= #{createTime}
+        </if>
+        <if test="price !=null and price != ''">
+            and t.price= #{price}
+        </if>
+        <if test="repairId !=null and repairId != ''">
+            and t.repair_id= #{repairId}
+        </if>
+        <if test="bId !=null and bId != ''">
+            and t.b_id= #{bId}
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            and t.community_id= #{communityId}
+        </if>
+        <if test="content !=null and content != ''">
+            and t.content like concat('%',#{content},'%')
+        </if>
+        <if test="declarant !=null and declarant != ''">
+            and t.declarant like concat('%',#{declarant},'%')
+        </if>
+        <if test="carId !=null and carId != ''">
+            and t.car_id= #{carId}
+        </if>
+    </select>
+
+</mapper>

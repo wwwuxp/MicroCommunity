@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.java110.front.mapper.AttendanceExceptionMapper">
+
+    <insert id="upsertAttendanceExceptionBatch" parameterType="java.util.Set">
+        INSERT INTO attendance_exception(id, exception_id, department, `position`, `name`, attendance_month, is_verify)
+        VALUES
+        <foreach collection="collection" item="item" separator=",">
+            (#{item.id}, #{item.exceptionId}, #{item.department}, #{item.position}, #{item.name}, #{item.attendanceMonth}, #{item.isVerify})
+        </foreach>
+        ON DUPLICATE KEY UPDATE is_verify = '0'
+    </insert>
+
+    <insert id="insertAttendanceExceptionDataBatch" parameterType="java.util.List">
+        INSERT INTO attendance_exception_data(id,attendance_date,actual_start_work_time,actual_end_work_time,type,exception_id)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.id},#{item.attendanceDate},#{item.actualStartWorkTime},#{item.actualEndWorkTime},#{item.type},#{item.exceptionId})
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+        actual_start_work_time = VALUES(actual_start_work_time),
+        actual_end_work_time = VALUES(actual_end_work_time),
+        type = VALUES(type)
+    </insert>
+
+    <delete id="deleteByIds">
+        DELETE FROM attendance_exception_data
+        WHERE id IN
+        <foreach collection="list" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </delete>
+
+
+    <delete id="deleteByDate">
+        delete from attendance_exception_data where attendance_date >= #{startDate} and attendance_date &lt;= #{endDate}
+    </delete>
+
+</mapper>

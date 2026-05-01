@@ -1,0 +1,86 @@
+# 开发环境配置
+spring:
+  datasource:
+    url: jdbc:mysql://dev.db.java110.com:3306/tt?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    connectionProperties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=5000
+    minIdle: 5
+    validationQuery: SELECT 1 FROM DUAL
+    initialSize: 5
+    maxWait: 60000
+    filters: stat,wall,log4j
+    poolPreparedStatements: true
+    maxPoolPreparedStatementPerConnectionSize: 20
+    testOnBorrow: false
+    testWhileIdle: true
+    minEvictableIdleTimeMillis: 300000
+    timeBetweenEvictionRunsMillis: 60000
+    testOnReturn: false
+    driverClassName: com.mysql.cj.jdbc.Driver
+    maxActive: 20
+
+# 数据同步配置 - 开发环境
+sync:
+  source:
+    system: DEV_SYSTEM
+  external:
+    jdbc:
+      # 开发环境外部数据库地址（本地测试用）
+      url: jdbc:mysql://localhost:3306/source_db?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      username: root
+      password: 123456
+      driver-class-name: com.mysql.cj.jdbc.Driver
+    table:
+      org: pm_org
+      staff: pm_staff
+      rel: pm_org_staff_rel
+  task:
+    enabled: false  # 开发环境关闭定时任务
+
+# 开发环境日志级别
+logging:
+  level:
+    com.java110.ext: DEBUG
+
+kafka:
+  consumer:
+    zookeeper:
+      connect: dev.zk.java110.com:2181
+    servers: dev.kafka.java110.com:9092
+    enable:
+      auto:
+        commit: true
+    session:
+      timeout: 6000
+    auto:
+      commit:
+        interval: 100
+      offset:
+        reset: latest
+    topic: test
+    group:
+      id: notifyBusinessStatus
+    concurrency: 10
+
+  producer:
+    zookeeper:
+      connect: dev.zk.java110.com:2181
+    servers: dev.kafka.java110.com:9092
+    retries: 0
+    batch:
+      size: 4096
+    linger: 1
+    buffer:
+      memory: 40960
+
+jedis:
+  pool:
+    config:
+      maxTotal: 100
+      maxIdle: 20
+      maxWaitMillis: 20000
+    host: dev.redis.java110.com
+    port: 6380
+    timeout: 3000
+    password:

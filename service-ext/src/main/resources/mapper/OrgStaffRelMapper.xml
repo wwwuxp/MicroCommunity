@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.java110.ext.mapper.OrgStaffRelMapper">
+
+
+    <select id="selectOrgUser" resultType="com.java110.ext.vo.OrgStaffVo">
+        select u.user_id, u.name userName, u.source_user_id userSourceId, u.flag userFlag,
+        o.org_id, o.org_name, o.source_org_id orgSourceId,
+        rel.rel_id, rel.rel_cd
+        from u_user u
+        left join u_org_staff_rel rel on rel.staff_id = u.user_id
+        left join u_org o on o.org_id = rel.org_id
+        where u.status_cd = '0'
+        and o.status_cd = '0'
+        and rel.status_cd = '0'
+        <if test="sourceOrgId != null and sourceOrgId != ''">
+          and o.source_org_id = #{sourceOrgId}
+        </if>
+        <if test="userId != null and userId != ''">
+            and u.user_id = #{userId}
+        </if>
+
+    </select>
+    <select id="selectExportSourceData" resultType="com.java110.ext.excel.OrgStaffRelExcel">
+        select u.user_id, u.name userName, u.email, u.address, u.sex, u.tel, u.level_cd,u.job_num,u.invitor_id,u.card_number,u.flag,u.source_user_id,
+        rel.rel_id,rel_cd,rel.store_id,rel.flag relFlag, d.name relCdName,
+        o.org_id, o.org_name,o.org_level,o.parent_org_id,o.description,o.belong_community_id,o.allow_operation,o.flag orgFlag,o.source_org_id
+        from u_user u
+        left join u_org_staff_rel rel on u.user_id = rel.staff_id and rel.status_cd = 0
+        left join u_org o on rel.org_id = o.org_id and o.status_cd = 0
+        left join t_dict d on d.status_cd = rel.rel_cd and d.table_columns = 'rel_cd'
+        where u.status_cd = 0 and rel.store_id = '402021121452660010' and u.source_user_id is not null
+    </select>
+
+</mapper>

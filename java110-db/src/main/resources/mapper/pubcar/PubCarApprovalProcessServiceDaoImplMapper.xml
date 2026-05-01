@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="pubCarApprovalProcessServiceDaoImpl">
+
+    <!-- 根据行程id查找对应的行程审批流程 -->
+    <select id="getPubCarApprovalProcess" parameterType="map" resultType="integer">
+        SELECT reviewer_role reviewerRole
+        FROM pubcar_approval_process
+        WHERE trip_id = #{tripId} AND status_cd = '0'AND <![CDATA[reviewer_role <> 2]]>
+    </select>
+
+    <!-- 根据行程id列表查找对应的行程审批流程 -->
+    <select id="getTripApprovalProcess" parameterType="java.util.List" resultType="com.java110.dto.pubCarApprovalProcess.PubCarApprovalProcessDto">
+        SELECT pap.trip_id tripId, uu.`name`, pap.reviewer_role reviewerRole, pap.sequence,pap.approval_status approvalStatus,
+                DATE_FORMAT(pap.update_time, '%Y年%c月%e日 %H:%i') approvalTime
+        FROM pubcar_approval_process pap
+        LEFT JOIN u_user uu ON uu.user_id = pap.user_id AND uu.status_cd = '0'
+        WHERE pap.table_type = 1000 AND pap.status_cd = '0'
+        AND pap.trip_id IN
+        <foreach collection="list" open="(" close=")" item="item" separator=",">
+            #{item}
+        </foreach>
+    </select>
+
+    <!-- 查询当前用需要审核的外出id -->
+    <select id="getOutGoingIds" parameterType="com.java110.dto.pubCarApprovalProcess.PubCarApprovalProcessDto" resultType="string">
+        SELECT trip_id
+        FROM pubcar_approval_process
+        WHERE user_id = #{currentUserId}
+          AND table_type = 2000
+          AND approval_status = #{approvalStatus}
+          AND reviewer_role = #{reviewerRole}
+          AND status_cd = '0'
+        ORDER BY create_time DESC
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 查询当前用户需要审核的外出id数量 -->
+    <select id="getOutGoingIdsCount" parameterType="com.java110.dto.pubCarApprovalProcess.PubCarApprovalProcessDto" resultType="int">
+        SELECT COUNT(*) count
+        FROM pubcar_approval_process
+        WHERE user_id = #{currentUserId}
+          AND table_type = 2000
+          AND approval_status = #{approvalStatus}
+          AND reviewer_role = #{reviewerRole}
+          AND status_cd = '0'
+    </select>
+
+    <!-- 局领导是否显示了这条数据 -->
+    <select id="hasBureauLeaderApprove" parameterType="map" resultType="java.lang.Integer">
+        SELECT 1
+        FROM pubcar_approval_process
+        WHERE trip_id = #{tripId}
+          AND reviewer_role = 1
+          AND community_id = #{communityId}
+        LIMIT 1
+    </select>
+
+    <!-- 获取未审核的数量 -->
+    <select id="getNotApprovalCount" parameterType="com.java110.dto.pubCarApprovalProcess.PubCarApprovalProcessDto" resultType="int">
+        SELECT COUNT(1) count
+        FROM pubcar_approval_process
+        WHERE user_id = #{currentUserId} AND approval_status = 2 AND table_type = 1000 AND status_cd = '0'
+    </select>
+
+    <!-- 获取行程id列表 -->
+    <select id="getTrips" parameterType="com.java110.dto.pubCarApprovalProcess.PubCarApprovalProcessDto" resultType="com.java110.dto.pubCarApprovalProcess.PubCarApprovalProcessDto">
+        SELECT m.trip_id tripId, m.approval_status approvalStatus, m.reviewer_role reviewerRole
+        FROM pubcar_approval_process m
+        LEFT JOIN pubcar_trip t ON t.trip_id = m.trip_id
+        LEFT JOIN pubcar_trip_car_num n ON n.trip_id = t.trip_id
+        LEFT JOIN u_user uu ON uu.user_id = t.user_id AND uu.status_cd = '0'
+        LEFT JOIN u_org_staff_rel r ON r.staff_id = uu.user_id AND r.status_cd = '0'
+        LEFT JOIN u_org uo ON uo.org_id = r.org_id AND uo.status_cd = '0'
+        LEFT JOIN t_dict d ON d.status_cd = r.rel_cd AND d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd'
+        WHERE t.status_cd= '0' AND m.status_cd = '0' AND m.table_type = 1000
+          AND m.user_id = #{currentUserId}
+        <if test="approvalStatus != null">
+            AND m.approval_status = #{approvalStatus}
+        </if>
+        <if test="userId !=null and userId != ''">
+            and t.user_id = #{userId}
+        </if>
+        <if test="applicant !=null and applicant != ''">
+            and uu.name like concat('%',#{applicant},'%')
+        </if>
+        <if test="tel !=null and tel != ''">
+            and uu.tel like concat('%',#{tel},'%')
+        </if>
+        <if test="start !=null and start != ''">
+            and t.start like concat('%',#{start},'%')
+        </if>
+        <if test="destination !=null and destination != ''">
+            and t.destination like concat('%',#{destination},'%')
+        </if>
+        <if test="applyNum !=null">
+            and t.apply_num= #{applyNum}
+        </if>
+        <if test="isUrgent !=null">
+            and t.is_urgent= #{isUrgent}
+        </if>
+        <if test="department !=null and department != ''">
+            and uo.org_name like concat('%',#{department},'%')
+        </if>
+        <if test="position !=null and position != ''">
+            and d.name like concat('%',#{position},'%')
+        </if>
+        <if test="tripType !=null">
+            and n.trip_type = #{tripType}
+        </if>
+        <if test="tripStatus !=null and tripStatus != 0">
+            and t.trip_status= #{tripStatus}
+        </if>
+        <!--<if test="approvalStatus !=null and approvalStatus != 0">
+            and t.approval_status= #{approvalStatus}
+        </if>-->
+        <if test="applyTimeStart !=null">
+            <![CDATA[ and t.start_time >= #{applyTimeStart}]]>
+        </if>
+        <if test="applyTimeEnd !=null">
+            <![CDATA[ and t.end_time <= #{applyTimeEnd}]]>
+        </if>
+        <if test="tripId !=null and tripId != ''">
+            and t.trip_id= #{tripId}
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            and m.community_id= #{communityId}
+        </if>
+        ORDER BY t.create_time DESC
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+    </select>
+
+    <!-- 获取行程id数量 -->
+    <select id="getTripIdsCount" parameterType="com.java110.dto.pubCarApprovalProcess.PubCarApprovalProcessDto" resultType="string">
+        SELECT DISTINCT m.trip_id tripId
+        FROM pubcar_approval_process m
+        LEFT JOIN pubcar_trip t ON t.trip_id = m.trip_id
+        LEFT JOIN pubcar_trip_car_num n ON n.trip_id = t.trip_id
+        LEFT JOIN u_user uu ON uu.user_id = t.user_id AND uu.status_cd = '0'
+        LEFT JOIN u_org_staff_rel r ON r.staff_id = uu.user_id AND r.status_cd = '0'
+        LEFT JOIN u_org uo ON uo.org_id = r.org_id AND uo.status_cd = '0'
+        LEFT JOIN t_dict d ON d.status_cd = r.rel_cd AND d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd'
+        WHERE t.status_cd= '0' AND m.status_cd = '0' AND m.table_type = 1000
+        AND m.user_id = #{currentUserId}
+        <if test="approvalStatus != null">
+            AND m.approval_status = #{approvalStatus}
+        </if>
+        <if test="userId !=null and userId != ''">
+            and t.user_id = #{userId}
+        </if>
+        <if test="applicant !=null and applicant != ''">
+            and uu.name like concat('%',#{applicant},'%')
+        </if>
+        <if test="tel !=null and tel != ''">
+            and uu.tel like concat('%',#{tel},'%')
+        </if>
+        <if test="start !=null and start != ''">
+            and t.start like concat('%',#{start},'%')
+        </if>
+        <if test="destination !=null and destination != ''">
+            and t.destination like concat('%',#{destination},'%')
+        </if>
+        <if test="applyNum !=null">
+            and t.apply_num= #{applyNum}
+        </if>
+        <if test="isUrgent !=null">
+            and t.is_urgent= #{isUrgent}
+        </if>
+        <if test="department !=null and department != ''">
+            and uo.org_name like concat('%',#{department},'%')
+        </if>
+        <if test="position !=null and position != ''">
+            and d.name like concat('%',#{position},'%')
+        </if>
+        <if test="tripType !=null">
+            and n.trip_type = #{tripType}
+        </if>
+        <if test="tripStatus !=null and tripStatus != 0">
+            and t.trip_status= #{tripStatus}
+        </if>
+        <!--<if test="approvalStatus !=null and approvalStatus != 0">
+            and t.approval_status= #{approvalStatus}
+        </if>-->
+        <if test="applyTimeStart !=null">
+            <![CDATA[ and t.start_time >= #{applyTimeStart}]]>
+        </if>
+        <if test="applyTimeEnd !=null">
+            <![CDATA[ and t.end_time <= #{applyTimeEnd}]]>
+        </if>
+        <if test="tripId !=null and tripId != ''">
+            and t.trip_id= #{tripId}
+        </if>
+        <if test="communityId !=null and communityId != ''">
+            and m.community_id= #{communityId}
+        </if>
+    </select>
+
+    <!-- 修改实例信息 -->
+    <update id="updatePubCarApprovalProcessInfo" parameterType="map">
+        UPDATE pubcar_approval_process 
+        <set>
+            <if test="statusCd != null and statusCd != ''">
+                status_cd = #{statusCd}
+            </if>
+            <if test="newBId != null and newBId != ''">
+                , b_id = #{newBId}
+            </if>
+            <if test="approvalStatus != null">
+                , approval_status = #{approvalStatus}
+            </if>
+        </set>
+        <where>
+            <if test="bId != null and bId != ''">
+                b_id = #{bId}
+            </if>
+            <if test="tripId != null and tripId != ''">
+                AND trip_id = #{tripId}
+            </if>
+            <if test="userId != null and userId != ''">
+                AND user_id = #{userId}
+            </if>
+            <if test="reviewerRole != null">
+                AND reviewer_role = #{reviewerRole}
+            </if>
+        </where>
+    </update>
+
+    <!-- 获取实例信息 -->
+    <select id="getPubCarApprovalProcessInstanceInfo" parameterType="map" resultType="map">
+        SELECT approval_process_id approvalProcessId, trip_id tripId, user_id userId, approval_status approvalStatus,
+               reviewer_role reviewerRole, sequence, b_id bId, table_type tableType, community_id communityId, status_cd statusCd
+        FROM pubcar_approval_process
+        WHERE status_cd = #{statusCd}
+        <if test="tripId != null and tripId != ''">
+            AND trip_id = #{tripId}
+        </if>
+        <if test="reviewerRole != null">
+            AND reviewer_role = #{reviewerRole}
+        </if>
+        <if test="bId != null and bId != ''">
+            AND b_id = #{bId}
+        </if>
+    </select>
+
+    <!-- 保存实例信息 -->
+    <insert id="savePubCarApprovalProcessInfo" parameterType="map">
+        INSERT INTO pubcar_approval_process(approval_process_id, trip_id, user_id, approval_status, reviewer_role, sequence, table_type, b_id, community_id, status_cd)
+        SELECT approval_process_id, trip_id, user_id, approval_status, reviewer_role, sequence, table_type, b_id, community_id, '0'
+        FROM business_pubcar_approval_process
+        WHERE b_id = #{bId} AND operate = #{operate}
+    </insert>
+
+    <!-- 保存业务数据 -->
+    <insert id="saveBusinessPubCarApprovalProcessInfo" parameterType="map">
+         INSERT INTO business_pubcar_approval_process (b_id, approval_process_id, trip_id, user_id, approval_status, reviewer_role, sequence, table_type, community_id, operate)
+         VALUES (#{bId}, #{approvalProcessId}, #{tripId}, #{userId}, #{approvalStatus}, #{reviewerRole}, #{sequence}, #{tableType}, #{communityId}, #{operate})
+    </insert>
+
+    <!-- 获取业务信息 -->
+    <select id="getBusinessPubCarApprovalProcessInfo" parameterType="map" resultType="map">
+        SELECT b_id bId, approval_process_id approvalProcessId, trip_id tripId, user_id userId, approval_status approvalStatus,
+               reviewer_role reviewerRole, sequence, table_type tableType, community_id communityId
+        FROM business_pubcar_approval_process
+        WHERE b_id = #{bId} AND operate = #{operate}
+    </select>
+
+</mapper>

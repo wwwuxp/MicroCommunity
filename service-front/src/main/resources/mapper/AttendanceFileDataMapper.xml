@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.java110.front.mapper.AttendanceFileDataMapper">
+
+    <!-- 插入文件基本信息 -->
+    <insert id="saveFileInfo" parameterType="com.java110.po.attendanceFile.AttendanceFilePo" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO attendance_file(file_name,file_time,data_type,import_time,user_id)
+        VALUES (#{fileName},#{fileTime},#{dataType},#{importTime},#{userId})
+    </insert>
+
+    <!-- 个人休假数据批量插入,其中(name,department,position,vacation_type,act_start_time,act_end_time)建立了唯一索引
+    road_day = VALUES(road_day),leave_status = VALUES(leave_status),return_time = VALUES(return_time),-->
+    <insert id="saveVacationBatch" parameterType="java.util.List">
+        INSERT INTO attendance_file_vacation(
+        `name`,department,`position`,vacation_type,leave_day,road_day,return_time,
+        start_time,end_time,act_start_time,act_end_time,approval_status,file_id)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.name},#{item.department},#{item.position},
+             #{item.vacationType},#{item.leaveDay},
+             #{item.roadDay},#{item.returnTime},
+             #{item.startTime},#{item.endTime},
+             #{item.actStartTime},#{item.actEndTime},#{item.approvalStatus},
+             #{item.fileId})
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+        leave_day = VALUES(leave_day),
+        start_time = VALUES(start_time),
+        end_time = VALUES(end_time),
+        approval_status = VALUES(approval_status),
+        file_id = VALUES(file_id),
+        status_cd = '0'
+    </insert>
+
+    <!-- 个人调休数据批量插入，其中(name,department,start_time,end_time)建立了唯一索引 -->
+    <insert id="saveRestBatch" parameterType="java.util.List">
+        INSERT INTO attendance_file_rest(`name`,department,submit_date,start_time,end_time,rest_duration,approval_status,file_id)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.name},#{item.department},#{item.submitDate},#{item.startTime},#{item.endTime},
+            #{item.restDuration},#{item.approvalStatus},#{item.fileId})
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+        submit_date = VALUES(submit_date),
+        rest_duration = VALUES(rest_duration),
+        approval_status = VALUES(approval_status),
+        file_id = VALUES(file_id),
+        status_cd = '0'
+    </insert>
+
+    <!-- 个人加班数据批量插入，其中(name,department,start_time,end_time)建立了唯一索引 -->
+    <insert id="saveOverTimeBatch" parameterType="java.util.List">
+        INSERT INTO attendance_file_overtime(`name`,department,submit_date,start_time,end_time,
+        work_overtime_duration,work_overtime_matter,approval_status,file_id)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.name}, #{item.department}, #{item.submitDate}, #{item.startTime}, #{item.endTime},
+            #{item.workOvertimeDuration}, #{item.workOvertimeMatter}, #{item.approvalStatus}, #{item.fileId})
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+        submit_date = VALUES(submit_date),
+        work_overtime_duration = VALUES(work_overtime_duration),
+        work_overtime_matter = VALUES(work_overtime_matter),
+        approval_status = VALUES(approval_status),
+        file_id = VALUES(file_id),
+        status_cd = '0'
+    </insert>
+
+</mapper>

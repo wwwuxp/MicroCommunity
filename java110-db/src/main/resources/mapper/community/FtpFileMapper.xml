@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ftpFileDaoImpl">
+    <resultMap id="BaseResultMap" type="com.java110.entity.community.FtpFile">
+        <!--@Table -->
+        <result property="ftpId" column="ftp_id" jdbcType="VARCHAR"/>
+        <result property="fileName" column="file_name" jdbcType="VARCHAR"/>
+        <result property="fileSize" column="file_size" jdbcType="INTEGER"/>
+        <result property="fileType" column="file_type" jdbcType="VARCHAR"/>
+        <result property="filePath" column="file_path" jdbcType="VARCHAR"/>
+        <result property="name" column="name" jdbcType="VARCHAR"/>
+        <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+    <sql id="columnArr">
+            ftp_id AS ftpId ,            file_name AS fileName ,            file_size AS fileSize ,            file_type AS fileType ,            file_path AS filePath ,            name AS name ,            create_time AS createTime         </sql>
+    
+    <sql id="selectWhere">
+            <if test="ftpId != null and ftpId != ''">
+            AND ftp_id = #{ftpId}
+        </if>
+            <if test="fileName != null and fileName != ''">
+            AND file_name = #{fileName}
+        </if>
+            <if test="fileSize != null and fileSize != ''">
+            AND file_size = #{fileSize}
+        </if>
+            <if test="fileType != null and fileType != ''">
+            AND file_type = #{fileType}
+        </if>
+            <if test="filePath != null and filePath != ''">
+            AND file_path = #{filePath}
+        </if>
+            <if test="name != null and name != ''">
+            AND name = #{name}
+        </if>
+            <if test="createTime != null and createTime != ''">
+            AND create_time = #{createTime}
+        </if>
+        </sql>
+
+    <!-- 根据id查询数据 -->
+    <select id="queryById" resultMap="BaseResultMap">
+        select <include refid="columnArr"></include>
+        from ftp_file
+        where ftp_id = #{ftpId}
+    </select>
+    <!-- 分页查询queryAllByLimit -->
+    <select id="queryAllByLimit" resultMap="BaseResultMap">
+        select <include refid="columnArr"></include>
+        from ftp_file
+        where 1=1
+        <include refid="selectWhere"></include>
+    </select>
+    <!-- 查询总数 -->
+    <select id="count" resultType="int">
+        select count(1) `count`
+        from ftp_file
+        where 1=1
+        <include refid="selectWhere"></include>
+    </select>
+    <!--新增，单独-->
+    <insert id="insert"  keyProperty="id" useGeneratedKeys="true">
+        insert into tt.ftp_file(ftp_id, file_name, file_size, file_type, file_path, name, create_time)
+        values
+        (#{ftpId}, #{fileName}, #{fileSize}, #{fileType}, #{filePath}, #{name}, #{createTime})
+    </insert>
+    <!-- 批量插入 -->
+    <insert id="insertBatch" keyProperty="ftpId" useGeneratedKeys="true">
+        insert into tt.ftp_file(ftp_id, file_name, file_size, file_type, file_path, name, create_time)
+        values
+        <foreach collection="entities" item="entity" separator=",">
+        (#{ftpId}, #{fileName}, #{fileSize}, #{fileType}, #{filePath}, #{name}, #{createTime})
+        </foreach>
+    </insert>
+    <!-- 批量插入或按主键更新 -->
+    <insert id="insertOrUpdateBatch" keyProperty="ftpId" useGeneratedKeys="true">
+        insert into tt.ftp_file(ftp_id, file_name, file_size, file_type, file_path, name, create_time)
+        values
+        <foreach collection="entities" item="entity" separator=",">
+            (#{ftpId}, #{fileName}, #{fileSize}, #{fileType}, #{filePath}, #{name}, #{createTime})
+        </foreach>
+        on duplicate key update
+         ftp_id = values(ftp_id) , file_name = values(file_name) , file_size = values(file_size) , file_type = values(file_type) , file_path = values(file_path) , name = values(name) , create_time = values(create_time)     </insert>
+    <!--单个修改-->
+    <update id="update" parameterType="com.java110.entity.community.FtpFile">
+        update ftp_file
+        <set>
+                <if test="ftp_id != null and ftp_id != ''">
+            ftpId = #{ftp_id},
+        </if>
+                <if test="file_name != null and file_name != ''">
+            fileName = #{file_name},
+        </if>
+                <if test="file_size != null and file_size != ''">
+            fileSize = #{file_size},
+        </if>
+                <if test="file_type != null and file_type != ''">
+            fileType = #{file_type},
+        </if>
+                <if test="file_path != null and file_path != ''">
+            filePath = #{file_path},
+        </if>
+                <if test="name != null and name != ''">
+            name = #{name},
+        </if>
+                <if test="create_time != null and create_time != ''">
+            createTime = #{create_time},
+        </if>
+                </set>
+         where ftpId = #{ftp_id}
+    </update>
+    <delete id="deleteById" >
+        delete from ftp_file where ftpId = #{ftp_id}
+    </delete>
+    
+</mapper>
+
