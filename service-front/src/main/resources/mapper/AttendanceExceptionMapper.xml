@@ -37,5 +37,34 @@
     <delete id="deleteByDate">
         delete from attendance_exception_data where attendance_date >= #{startDate} and attendance_date &lt;= #{endDate}
     </delete>
+    <select id="selectDataByActStartAndEndDate"
+            resultType="com.java110.po.attendanceException.AttendanceExceptionDataPo">
+        select b.id, b.attendance_date attendanceDate, b.actual_start_work_time actualStartWorkTime, b.actual_end_work_time actualEndWorkTime,
+        b.type, b.exception_id exceptionId, b.create_time createTime, a.name, a.department, a.attendance_month attendanceMonth, a.position
+        from attendance_exception a
+        join attendance_exception_data b on a.id = b.exception_id
+        where a.name = #{name}
+        <if test="department != null and department != ''">
+            and a.department = #{department}
+        </if>
+        and b.attendance_date >= #{startDate} and b.attendance_date &lt;= #{endDate}
+        order by b.attendance_date
+    </select>
+    <select id="selectByIds" resultType="com.java110.po.attendanceException.AttendanceExceptionDataPo">
+        select id, attendance_date attendanceDate, actual_start_work_time actualStartWorkTime, actual_end_work_time actualEndWorkTime, type,exception_id exceptionId
+        from attendance_exception_data
+        WHERE id IN
+        <foreach collection="ids" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </select>
+
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO attendance_exception_data_back(id,attendance_date,actual_start_work_time,actual_end_work_time,type,exception_id)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.id},#{item.attendanceDate},#{item.actualStartWorkTime},#{item.actualEndWorkTime},#{item.type},#{item.exceptionId})
+        </foreach>
+    </insert>
 
 </mapper>

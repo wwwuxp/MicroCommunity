@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.java110.core.component.BaseComponentSMO;
 import com.java110.core.context.IPageData;
 import com.java110.dto.attendance.AttendanceRecordDto;
+import com.java110.enums.AttendanceType;
 import com.java110.front.smo.attendanceManagement.IExportAttendanceRecordSMO;
 import com.java110.intf.community.IAttendanceRecordInnerServiceSMO;
 import com.java110.utils.util.Assert;
@@ -47,6 +48,7 @@ public class ExportAttendanceRecordSMOImpl extends BaseComponentSMO implements I
         attendanceRecordDto.setName(paramIn.getString("name"));
         attendanceRecordDto.setDepartment(paramIn.getString("department"));
         attendanceRecordDto.setPosition(paramIn.getString("position"));
+        attendanceRecordDto.setWorkday(paramIn.getInteger("workday"));
         String lessAttendanceDateStr = paramIn.getString("lessAttendanceDate").trim();
         String moreAttendanceDateStr = paramIn.getString("moreAttendanceDate").trim();
 
@@ -94,11 +96,13 @@ public class ExportAttendanceRecordSMOImpl extends BaseComponentSMO implements I
             // 设置列宽
             sheet.setColumnWidth(0, 3000);
             sheet.setColumnWidth(1, 5000);
-            sheet.setColumnWidth(2, 4000);
-            sheet.setColumnWidth(3, 3000);
-            sheet.setColumnWidth(4, 4000);
+            sheet.setColumnWidth(2, 5000);
+            sheet.setColumnWidth(3, 4000);
+            sheet.setColumnWidth(4, 3000);
             sheet.setColumnWidth(5, 4000);
-            sheet.setColumnWidth(6, 3000);
+            sheet.setColumnWidth(6, 4000);
+            sheet.setColumnWidth(7, 3000);
+            sheet.setColumnWidth(8, 15000);
 
             //创建工作表的行, 第一行，从0开始
             Row row0 = sheet.createRow(0);
@@ -117,21 +121,27 @@ public class ExportAttendanceRecordSMOImpl extends BaseComponentSMO implements I
             Cell cell1 = row0.createCell(1);
             cell1.setCellValue("部门");
             cell1.setCellStyle(titleStyle);
-            Cell cell2 = row0.createCell(2);
+            Cell cell8 = row0.createCell(2);
+            cell8.setCellValue("职务");
+            cell8.setCellStyle(titleStyle);
+            Cell cell2 = row0.createCell(3);
             cell2.setCellValue("考勤日期");
             cell2.setCellStyle(titleStyle);
-            Cell cell3 = row0.createCell(3);
+            Cell cell3 = row0.createCell(4);
             cell3.setCellValue("日期类型");
             cell3.setCellStyle(titleStyle);
-            Cell cell4 = row0.createCell(4);
+            Cell cell4 = row0.createCell(5);
             cell4.setCellValue("实际上班时间");
             cell4.setCellStyle(titleStyle);
-            Cell cell5 = row0.createCell(5);
+            Cell cell5 = row0.createCell(6);
             cell5.setCellValue("实际下班时间");
             cell5.setCellStyle(titleStyle);
-            Cell cell6 = row0.createCell(6);
+            Cell cell6 = row0.createCell(7);
             cell6.setCellValue("类型");
             cell6.setCellStyle(titleStyle);
+            Cell cell7 = row0.createCell(8);
+            cell7.setCellValue("备注");
+            cell7.setCellStyle(titleStyle);
 
             // 根据数据库中页码数决定写多少次
             int count = attendanceRecordInnerServiceSMOImpl.queryAttendanceRecordsCount(attendanceRecordDto);
@@ -155,30 +165,35 @@ public class ExportAttendanceRecordSMOImpl extends BaseComponentSMO implements I
                     cell00.setCellValue(apiAttendanceRecordDataVo.getName());
                     Cell cell11 = dataRow.createCell(1);
                     cell11.setCellValue(apiAttendanceRecordDataVo.getDepartment());
-                    Cell cell22 = dataRow.createCell(2);
+                    Cell cell88 = dataRow.createCell(2);
+                    cell88.setCellValue(apiAttendanceRecordDataVo.getPosition());
+                    Cell cell22 = dataRow.createCell(3);
                     cell22.setCellValue(apiAttendanceRecordDataVo.getAttendanceDate());
-                    Cell cell33 = dataRow.createCell(3);
+                    Cell cell33 = dataRow.createCell(4);
                     switch (apiAttendanceRecordDataVo.getIsWorkingDay()){
                         case 1: cell33.setCellValue("工作日");break;
                         case 0: cell33.setCellValue("非工作日");break;
                         default:
                     }
-                    Cell cell44 = dataRow.createCell(4);
+                    Cell cell44 = dataRow.createCell(5);
                     cell44.setCellValue(apiAttendanceRecordDataVo.getActualStartWorkTime());
-                    Cell cell55 = dataRow.createCell(5);
+                    Cell cell55 = dataRow.createCell(6);
                     cell55.setCellValue(apiAttendanceRecordDataVo.getActualEndWorkTime());
-                    Cell cell66 = dataRow.createCell(6);
-                    switch (apiAttendanceRecordDataVo.getType()){
-                        case 1:
-                            cell66.setCellValue("正常");break;
-                        case 2:
-                            cell66.setCellValue("迟到");break;
-                        case 3:
-                            cell66.setCellValue("早退");break;
-                        case 4:
-                            cell66.setCellValue("旷工");break;
-                        default:
-                    }
+                    Cell cell66 = dataRow.createCell(7);
+                    cell66.setCellValue(AttendanceType.getNameByCode(apiAttendanceRecordDataVo.getType()));
+                    Cell cell77 = dataRow.createCell(8);
+                    cell77.setCellValue(apiAttendanceRecordDataVo.getRemark());
+//                    switch (apiAttendanceRecordDataVo.getType()){
+//                        case 1:
+//                            cell66.setCellValue("正常");break;
+//                        case 2:
+//                            cell66.setCellValue("迟到");break;
+//                        case 3:
+//                            cell66.setCellValue("早退");break;
+//                        case 4:
+//                            cell66.setCellValue("旷工");break;
+//                        default:
+//                    }
                 }
             }
 

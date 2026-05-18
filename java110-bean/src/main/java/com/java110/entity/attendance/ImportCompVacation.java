@@ -166,4 +166,12 @@ public class ImportCompVacation implements Serializable {
     public void setFileId(Integer fileId) {
         this.fileId = fileId;
     }
+
+    public String getPositionLevel() {
+        return positionLevel;
+    }
+
+    public void setPositionLevel(String positionLevel) {
+        this.positionLevel = positionLevel;
+    }
 }

@@ -10,16 +10,22 @@ import com.java110.core.component.BaseComponentSMO;
 import com.java110.core.context.IPageData;
 import com.java110.core.factory.GenerateCodeFactory;
 import com.java110.dto.attendance.AttendanceFileDto;
+import com.java110.dto.attendance.AttendanceRecordDto;
 import com.java110.dto.attendance.UserInfoDto;
 import com.java110.dto.outGoing.OutGoingDto;
 import com.java110.entity.attendance.*;
 import com.java110.entity.component.ComponentValidateResult;
+import com.java110.enums.AttendanceType;
 import com.java110.front.mapper.AttendanceExceptionMapper;
 import com.java110.front.mapper.AttendanceFileDataMapper;
+import com.java110.front.mapper.AttendanceNonWorkDayMapper;
+import com.java110.front.mapper.AttendanceRecordMapper;
 import com.java110.front.smo.attendanceManagement.IImportAttendanceFileSMO;
 import com.java110.intf.community.IAttendanceExceptionInnerServiceSMO;
 import com.java110.intf.community.IAttendanceRecordInnerServiceSMO;
 import com.java110.intf.pubcar.IOutGoingPersonnelInnerServiceSMO;
+import com.java110.po.attendance.AttendanceRecordPo;
+import com.java110.po.attendance.SysAllDatePo;
 import com.java110.po.attendanceException.AttendanceExceptionDataPo;
 import com.java110.po.attendanceException.AttendanceExceptionPo;
 import com.java110.po.attendanceFile.AttendanceFilePo;
@@ -30,6 +36,7 @@ import com.java110.utils.util.DateUtil;
 import com.java110.vo.ResultVo;
 import com.java110.vo.api.attendanceRecord.ApiAttendanceRecordDataVo;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.LocaleUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Row;
@@ -45,6 +52,8 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -73,6 +82,12 @@ public class ImportAttendanceFileSMOImpl extends BaseComponentSMO implements IIm
 
     @Autowired
     private AttendanceExceptionMapper attendanceExceptionMapper;
+
+    @Autowired
+    private AttendanceRecordMapper attendanceRecordMapper;
+
+    @Autowired
+    private AttendanceNonWorkDayMapper attendanceNonWorkDayMapper;
 
     @Autowired
     private IAttendanceRecordInnerServiceSMO attendanceRecordInnerServiceSMOImpl;
@@ -135,20 +150,21 @@ public class ImportAttendanceFileSMOImpl extends BaseComponentSMO implements IIm
             }
 
             // 保存文件基本信息
-            String fileTimeStr = reqJson.getString("fileTime").trim();
-            // 处理时间，防止前端传递的数据是非正常时间格式
-            if (fileTimeStr.contains("-")){
-                String[] fileTimeStrSplit = fileTimeStr.split("-");
-                String month = fileTimeStrSplit[1];
-                if (month.length() == 1){
-                    month = "0" + month;
-                }
-                fileTimeStr = fileTimeStrSplit[0] + "-" + month + "-" + fileTimeStrSplit[2];
-            }
+//            String fileTimeStr = reqJson.getString("fileTime").trim();
+//            // 处理时间，防止前端传递的数据是非正常时间格式
+//            if (fileTimeStr.contains("-")){
+//                String[] fileTimeStrSplit = fileTimeStr.split("-");
+//                String month = fileTimeStrSplit[1];
+//                if (month.length() == 1){
+//                    month = "0" + month;
+//                }
+//                fileTimeStr = fileTimeStrSplit[0] + "-" + month + "-" + fileTimeStrSplit[2];
+//            }
 
             AttendanceFilePo attendanceFilePo = new AttendanceFilePo();
             attendanceFilePo.setFileName(reqJson.getString("fileName"));
-            attendanceFilePo.setFileTime(fileTimeStr);
+//            attendanceFilePo.setFileTime(fileTimeStr);
+            attendanceFilePo.setFileTime(LocalDateTime.now().format(DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A)));
             attendanceFilePo.setDataType(dataType);
             attendanceFilePo.setImportTime(new Date());
             attendanceFilePo.setUserId(result.getUserId());
@@ -157,8 +173,8 @@ public class ImportAttendanceFileSMOImpl extends BaseComponentSMO implements IIm
             Integer fileId = attendanceFilePo.getId();
             // 获取文件时间在的月份中所有异常打卡数据
             // AttendanceRecordDto attendanceRecordDto = new AttendanceRecordDto();
-            LocalDate fileTime = LocalDate.parse(fileTimeStr, DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_B));
-            String attendanceMonth = fileTime.getYear() + "-" + fileTime.getMonthValue() + "-01";
+//            LocalDate fileTime = LocalDate.parse(fileTimeStr, DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_B));
+//            String attendanceMonth = fileTime.getYear() + "-" + fileTime.getMonthValue() + "-01";
 
             // attendanceRecordDto.setLessAttendanceDate(yearMonth + "-01");
             // attendanceRecordDto.setMoreAttendanceDate(yearMonth + "-31");
@@ -167,33 +183,1130 @@ public class ImportAttendanceFileSMOImpl extends BaseComponentSMO implements IIm
             // List<ApiAttendanceRecordDataVo> attendanceRecordDatas = attendanceRecordInnerServiceSMOImpl.queryAttendanceRecords(attendanceRecordDto);
 
             // 获取数据库中考勤月份下所有的考勤异常数据
-            List<AttendanceExceptionDataPo> attendanceExceptionInfos = attendanceExceptionInnerServiceSMOImpl.getAttendanceExceptionInfo(attendanceMonth);
-            Map<String, AttendanceExceptionDataPo> dbExceptionInfoKeyAndValueMap = attendanceExceptionInfos
-                    .stream()
-                    .collect(Collectors.toMap(t -> t.getName() + t.getDepartment() + t.getAttendanceDate(), t -> t, (k1, k2) -> k2));
+//            List<AttendanceExceptionDataPo> attendanceExceptionInfos = attendanceExceptionInnerServiceSMOImpl.getAttendanceExceptionInfo(attendanceMonth);
+//            Map<String, AttendanceExceptionDataPo> dbExceptionInfoKeyAndValueMap = attendanceExceptionInfos
+//                    .stream()
+//                    .collect(Collectors.toMap(t -> t.getName() + t.getDepartment() + t.getAttendanceDate(), t -> t, (k1, k2) -> k2));
 
             switch (dataType){
-                case AttendanceFilePo.DATATYPE_VACATION:
-                    handleVacation(easyExcelInputStream, fileId, dbExceptionInfoKeyAndValueMap);
-                    break;
-                case AttendanceFilePo.DATATYPE_COMP_VACATION:
-                    handleCompVacation(easyExcelInputStream, fileId, dbExceptionInfoKeyAndValueMap);
+//                case AttendanceFilePo.DATATYPE_VACATION:
+////                    handleVacation(easyExcelInputStream, fileId, dbExceptionInfoKeyAndValueMap);
+//                    handleVacation(easyExcelInputStream, fileId);
+//                    break;
+                case AttendanceFilePo.DATATYPE_COMP_VACATION: //综合休假
+//                    handleCompVacation(easyExcelInputStream, fileId, dbExceptionInfoKeyAndValueMap);
+                    handleCompVacation(easyExcelInputStream, fileId);
                     break;
                 case AttendanceFilePo.DATATYPE_REST:
-                    handleRest(easyExcelInputStream, fileId, dbExceptionInfoKeyAndValueMap);
+//                    handleRest(easyExcelInputStream, fileId, dbExceptionInfoKeyAndValueMap);
+                    handleRestNew(easyExcelInputStream, fileId);
                     break;
-                case AttendanceFilePo.DATATYPE_OVERTIME:
-                    handleOverTime(easyExcelInputStream, fileId);
-                    break;
+//                case AttendanceFilePo.DATATYPE_OVERTIME:
+//                    handleOverTime(easyExcelInputStream, fileId);
+//                    break;
                 default:
             }
 
         } catch (Exception e) {
             e.printStackTrace();
-            throw new SMOException("导入失败，可能是格式不符合要求或某列数据为空了");
+//            throw new SMOException("导入失败，可能是格式不符合要求或某列数据为空了");
+            throw new SMOException(e.getMessage());
         }
 
         return ResultVo.success();
+    }
+
+    private void handleRest(InputStream inputStream, Integer fileId) {
+        EasyExcel.read(inputStream, ImportRest.class, new ReadListener<ImportRest>() {
+
+            private List<ImportRest> cachedRestDataList = new ArrayList<>(BATCH_COUNT);
+
+            private List<String> needRemoveExceptionDataIds = new ArrayList<>();
+
+            @Override
+            public void invoke(ImportRest data, AnalysisContext analysisContext) {
+                String department = data.getDepartment();
+                String keyStr = "深圳市税务局_稽查局_";
+                if (department.contains(keyStr)){
+                    department = department.replace(keyStr, "");
+                    data.setDepartment(department);
+                }
+                data.setFileId(fileId);
+                cachedRestDataList.add(data);
+
+                DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_B);
+//                if (data instanceof ImportRest){
+                // 时间formatter
+                DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_O);
+                DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_M);
+                // 上下班时间
+                LocalTime fixedStartTime = LocalTime.parse(ConstantUtil.FIXED_START_TIME, timeFormatter);
+                LocalTime fixedEndTime = LocalTime.parse(ConstantUtil.FIXED_END_TIME, timeFormatter);
+
+                String name = data.getName();
+                LocalDateTime restStartDateTime = LocalDateTime.parse(data.getStartTime(), dateTimeFormatter);
+                LocalDateTime restEndDateTime = LocalDateTime.parse(data.getEndTime(), dateTimeFormatter);
+                LocalDate restStartDate = restStartDateTime.toLocalDate();
+                LocalDate restEndDate = restEndDateTime.toLocalDate();
+                LocalTime restStartTime = restStartDateTime.toLocalTime();
+                LocalTime restEndTime = restEndDateTime.toLocalTime();
+
+                //获取到调休假的异常考勤
+                List<AttendanceExceptionDataPo> exceptionDataPos = attendanceExceptionMapper.selectDataByActStartAndEndDate(name, null, restStartDate, restEndDate);
+//                if (CollectionUtils.isEmpty(exceptionDataPos)){
+//                    throw new BusinessException(ResponseConstant.RESULT_CODE_ERROR, data.getDepartment()+"“"+data.getName()+"”在"+data.getStartTime()+"至"+data.getEndTime()+"未找到异常考勤数据，请核对科室是否正确");
+//                }
+                Map<String, AttendanceExceptionDataPo> dbExceptionInfoKeyAndValueMap = exceptionDataPos
+                        .stream()
+                        .collect(Collectors.toMap(t -> t.getName() +/* t.getDepartment() +*/ t.getAttendanceDate(), t -> t, (k1, k2) -> k2));
+
+                LocalDate tempStartDate = restStartDateTime.toLocalDate();
+                while (tempStartDate.isBefore(restEndDate) || tempStartDate.isEqual(restEndDate)){
+                    String key = name + /*department +*/ tempStartDate.format(dateFormatter);
+
+                    if (dbExceptionInfoKeyAndValueMap.containsKey(key)){
+                        AttendanceExceptionDataPo attendanceExceptionDataPo = dbExceptionInfoKeyAndValueMap.get(key);
+                        String actualStartWorkTimeStr = attendanceExceptionDataPo.getActualStartWorkTime();
+                        String actualEndWorkTimeStr = attendanceExceptionDataPo.getActualEndWorkTime();
+                        LocalTime actualStartWorkTime = null;
+                        LocalTime actualEndWorkTime = null;
+                        if (StringUtils.isNotBlank(actualStartWorkTimeStr)){
+                            actualStartWorkTime = LocalTime.parse(actualStartWorkTimeStr, timeFormatter);
+                        }
+                        if (StringUtils.isNotBlank(actualEndWorkTimeStr)){
+                            actualEndWorkTime = LocalTime.parse(actualEndWorkTimeStr, timeFormatter);
+                        }
+
+                        boolean allNull = Objects.isNull(actualStartWorkTime) && Objects.isNull(actualEndWorkTime);
+                        boolean allNonNull = Objects.nonNull(actualStartWorkTime) && Objects.nonNull(actualEndWorkTime);
+                        // 调休起始时间在同一天
+                        if (restStartDate.isEqual(restEndDate)){
+                            // 2022-07-05 修改问题 调休时间如果为上午调休 上班时间修改为14:05:59
+                            if(ConstantUtil.MORNING_WORKING_HOURS.equals(restStartTime)
+                                    && ConstantUtil.MORNING_OFF_HOURS.equals(restEndTime)){
+                                fixedStartTime = LocalTime.parse(ConstantUtil.NOON_FIXED_START_TIME, timeFormatter);
+                            }else // 如果不是那么上班时间修改为调休结束始时间减5分钟
+                                if(ConstantUtil.MORNING_WORKING_HOURS.equals(restStartTime)){
+                                    fixedStartTime = restEndTime.minusMinutes(5);
+                                }
+                            // 调休时间如果为下午调休 调休整个下午下班时间设置为 11:55
+                            if(ConstantUtil.WORKING_HOURS_IN_THE_AFTERNOON.equals(restStartTime)
+                                    && ConstantUtil.AFTERNOON_GET_OFF_WORK_HOURS.equals(restEndTime)){
+                                fixedEndTime = fixedStartTime = LocalTime.parse(ConstantUtil.MORNING_FIXED_END_TIME);
+                            }else // 如果不是那么下班时间修改为调休开始时间减5分钟
+                                if(ConstantUtil.AFTERNOON_GET_OFF_WORK_HOURS.equals(restEndTime)){
+                                    fixedEndTime = restStartTime.minusMinutes(5);
+                                }
+                            // 旷工
+                            if (allNull){
+                                //全都没有打卡，调休时间涵盖住了上班时间则设定为正常
+                                boolean s = restStartTime.isBefore(fixedStartTime) || restStartTime.equals(fixedStartTime);
+                                boolean e = restEndTime.isAfter(fixedEndTime) || restEndTime.equals(fixedEndTime);
+                                if (s && e){
+                                    //增加需要移除的异常id和更新考勤表的修复类型
+                                    needRemoveExceptionDataIds.add(attendanceExceptionDataPo.getId());
+                                    updateRepairTypeByNameAndDepartAndDate(AttendanceType.TXJ.getCode(), data.getName(), data.getDepartment(), attendanceExceptionDataPo.getAttendanceDate());
+                                }else {
+                                    String remark = "全天没有打卡，有调休假（"+data.getStartTime()+"~"+data.getEndTime()+"），无法涵盖全天。";
+                                    updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), attendanceExceptionDataPo.getAttendanceDate());
+                                }
+                            }
+                            // 异常表中此人开始时间和结束时间不为空
+                            else if (allNonNull) {
+                                boolean a = false, b = false;
+                                // 迟到
+                                if (actualStartWorkTime.isAfter(fixedStartTime)) {
+                                    // 判断是否在调休
+                                    boolean s = (restStartTime.isBefore(fixedStartTime) || restStartTime.equals(fixedStartTime))
+                                            && (restEndTime.isAfter(actualStartWorkTime) || restEndTime.equals(actualStartWorkTime));
+                                    if (s) {
+                                        a = true;
+                                    }
+                                } else {
+                                    a = true;
+                                }
+
+                                // 早退
+                                if (actualEndWorkTime.isBefore(fixedEndTime)) {
+                                    // 是否在调休
+                                    boolean e = (restStartTime.isBefore(actualEndWorkTime) || restStartTime.equals(actualEndWorkTime))
+                                            && (restEndTime.isAfter(fixedEndTime) || restEndTime.equals(fixedEndTime));
+                                    if (e) {
+                                        b = true;
+                                    }
+                                } else {
+                                    b = true;
+                                }
+
+                                if (a && b) {
+                                    // 加入删除列表
+                                    needRemoveExceptionDataIds.add(attendanceExceptionDataPo.getId());
+                                    updateRepairTypeByNameAndDepartAndDate(AttendanceType.TXJ.getCode(), data.getName(), data.getDepartment(), attendanceExceptionDataPo.getAttendanceDate());
+                                } else {
+                                    String remark = "有调休假（"+data.getStartTime()+"~"+data.getEndTime()+"），无法涵盖打卡异常所有时间。";
+                                    updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), attendanceExceptionDataPo.getAttendanceDate());
+                                }
+                            }
+                            //开始时间和结束时间有其中一个为空的
+                            else {
+                                String remark = "开始时间或结束时间中有一个为空";
+                                updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), attendanceExceptionDataPo.getAttendanceDate());
+                            }
+                        }else {
+                            // 不在同一天
+                            LocalDateTime fixedStartDateTime = LocalDateTime.of(tempStartDate, fixedStartTime);
+                            LocalDateTime fixedEndDateTime = LocalDateTime.of(tempStartDate, fixedEndTime);
+                            LocalDateTime actualStartWorkDateTime = null;
+                            LocalDateTime actualEndWorkDateTime = null;
+                            if (Objects.nonNull(actualStartWorkTime)){
+                                actualStartWorkDateTime = LocalDateTime.of(tempStartDate, actualStartWorkTime);
+                            }
+                            if (Objects.nonNull(actualEndWorkTime)){
+                                actualEndWorkDateTime = LocalDateTime.of(tempStartDate, actualEndWorkTime);
+                            }
+                            // 实际开始时间和实际结束时间都为空，旷工
+                            if (allNull){
+                                // 时间是否合法
+                                boolean s = restStartDateTime.isBefore(fixedStartDateTime) || restStartDateTime.equals(fixedStartDateTime);
+                                if (s){
+                                    needRemoveExceptionDataIds.add(attendanceExceptionDataPo.getId());
+                                    updateRepairTypeByNameAndDepartAndDate(AttendanceType.TXJ.getCode(), data.getName(), data.getDepartment(), attendanceExceptionDataPo.getAttendanceDate());
+                                }else {
+                                    String remark = "全天没有打卡，有调休假（"+data.getStartTime()+"~"+data.getEndTime()+"），无法涵盖全天。";
+                                    updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), attendanceExceptionDataPo.getAttendanceDate());
+                                }
+                            }
+                            // 实际开始时间和结束时间都不为空
+                            else if (allNonNull){
+                                // 时间是否合法
+                                boolean a = false, b = false;
+                                // 迟到
+                                if (actualStartWorkTime.isAfter(fixedStartTime)){
+                                    boolean s = (restStartDateTime.isBefore(fixedStartDateTime) || restStartDateTime.equals(fixedStartDateTime))
+                                            && (restEndDateTime.isAfter(actualStartWorkDateTime) || restEndDateTime.equals(actualStartWorkDateTime));
+                                    if (s){
+                                        a = true;
+                                    }
+                                }else {
+                                    a = true;
+                                }
+
+                                // 早退
+                                if (actualEndWorkTime.isBefore(fixedEndTime)){
+                                    boolean e = (restStartDateTime.isBefore(actualEndWorkDateTime) || restStartDateTime.isEqual(actualEndWorkDateTime))
+                                            && (restEndDateTime.isAfter(fixedEndDateTime) || restEndDateTime.isEqual(fixedEndDateTime));
+                                    if (e){
+                                        b = true;
+                                    }
+                                }else {
+                                    b = true;
+                                }
+
+                                if (a && b){
+                                    // 加入删除列表
+                                    needRemoveExceptionDataIds.add(attendanceExceptionDataPo.getId());
+                                    updateRepairTypeByNameAndDepartAndDate(AttendanceType.TXJ.getCode(), data.getName(), data.getDepartment(), attendanceExceptionDataPo.getAttendanceDate());
+                                }else {
+                                    String remark = "有调休假（"+data.getStartTime()+"~"+data.getEndTime()+"），无法涵盖打卡异常所有时间。";
+                                    updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), attendanceExceptionDataPo.getAttendanceDate());
+                                }
+                            }//开始时间和结束时间有其中一个为空的
+                            else {
+                                String remark = "开始时间或结束时间中有一个为空";
+                                updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), attendanceExceptionDataPo.getAttendanceDate());
+                            }
+                        }
+                    }
+                    tempStartDate = tempStartDate.plusDays(1);
+                }
+//                    }else if (data instanceof ImportVacation){
+//                        // 休假
+//                        ImportVacation importVacation = (ImportVacation) data;
+//                        String name = importVacation.getName();
+//                        String department = importVacation.getDepartment();
+//
+//                        LocalDate vacationActStartDate = LocalDate.parse(importVacation.getActStartTime(), dateFormatter);
+//                        LocalDate vacationActEndDate = LocalDate.parse(importVacation.getActEndTime(), dateFormatter);
+//                        LocalDate tempActStartDate = vacationActStartDate;
+//                        while (tempActStartDate.isBefore(vacationActEndDate) || tempActStartDate.isEqual(vacationActEndDate)){
+//                            String key = name + department + tempActStartDate.format(dateFormatter);
+//                            if (dbExceptionInfoKeyAndValueMap.containsKey(key)) {
+//                                AttendanceExceptionDataPo attendanceExceptionDataPo = dbExceptionInfoKeyAndValueMap.get(key);
+//                                // 1：正常，2：迟到，3：早退，4：旷工
+//                                Integer type = attendanceExceptionDataPo.getType();
+//                                if (!Objects.equals(type, 1)) {
+//                                    needRemoveExceptionDataIds.add(attendanceExceptionDataPo.getId());
+//                                }
+//                            }
+//
+//                            tempActStartDate = tempActStartDate.plusDays(1);
+//                        }
+//                    }
+
+
+                // 达到BATCH_COUNT了，需要去存储一次数据库，防止数据几万条数据在内存，容易OOM
+                if (cachedRestDataList.size() >= BATCH_COUNT) {
+                    saveData();
+                    // handleAttendanceExceptionData(attendanceRecordDatas, cachedRestDataList);
+                    // 存储完成清理 list
+                    cachedRestDataList = new ArrayList<>(BATCH_COUNT);
+                }
+            }
+
+            @Override
+            public void doAfterAllAnalysed(AnalysisContext analysisContext) {
+                saveData();
+                deleteData();
+                // handleAttendanceExceptionData(attendanceRecordDatas, cachedRestDataList);
+            }
+
+            @Override
+            public void onException(Exception exception, AnalysisContext analysisContext) throws Exception {
+                throw exception;
+            }
+
+            @Override
+            public void invokeHead(Map map, AnalysisContext analysisContext) {}
+
+            @Override
+            public void extra(CellExtra cellExtra, AnalysisContext analysisContext) {}
+
+            @Override
+            public boolean hasNext(AnalysisContext analysisContext) {
+                return true;
+            }
+
+            private void saveData() {
+                attendanceFileDataMapper.saveRestBatch(cachedRestDataList);
+            }
+
+            private void deleteData() {
+                if (CollectionUtils.isNotEmpty(needRemoveExceptionDataIds)) {
+                    List<AttendanceExceptionDataPo> pos = attendanceExceptionMapper.selectByIds(needRemoveExceptionDataIds);
+                    attendanceExceptionMapper.batchInsert(pos);
+                    attendanceExceptionMapper.deleteByIds(needRemoveExceptionDataIds);
+                }
+            }
+
+        }).sheet().doRead();
+    }
+
+    private void handleRestNew(InputStream inputStream, Integer fileId) {
+        EasyExcel.read(inputStream, ImportRest.class, new ReadListener<ImportRest>() {
+
+            private List<ImportRest> cachedRestDataList = new ArrayList<>(BATCH_COUNT);
+
+            private List<String> needRemoveExceptionDataIds = new ArrayList<>();
+
+            @Override
+            public void invoke(ImportRest data, AnalysisContext analysisContext) {
+                String department = data.getDepartment();
+                String keyStr = "深圳市税务局_稽查局_";
+                if (department.contains(keyStr)){
+                    department = department.replace(keyStr, "");
+                    data.setDepartment(department);
+                }
+                data.setFileId(fileId);
+                cachedRestDataList.add(data);
+
+                DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_B);
+//                if (data instanceof ImportRest){
+                // 时间formatter
+                DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_O);
+                DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_M);
+                // 上下班时间
+                LocalTime fixedStartTime = LocalTime.parse(ConstantUtil.FIXED_START_TIME, timeFormatter);
+                LocalTime fixedEndTime = LocalTime.parse(ConstantUtil.FIXED_END_TIME, timeFormatter);
+
+                String name = data.getName();
+                LocalDateTime restStartDateTime = LocalDateTime.parse(data.getStartTime(), dateTimeFormatter);
+                LocalDateTime restEndDateTime = LocalDateTime.parse(data.getEndTime(), dateTimeFormatter);
+                LocalDate restStartDate = restStartDateTime.toLocalDate();
+                LocalDate restEndDate = restEndDateTime.toLocalDate();
+                LocalTime restStartTime = restStartDateTime.toLocalTime();
+                LocalTime restEndTime = restEndDateTime.toLocalTime();
+
+                for (int i = 0; restStartDate.isBefore(restEndDate) || restStartDate.equals(restEndDate); i++){
+                    //获取考勤情况
+                    List<AttendanceRecordPo> attendanceRecordPos = attendanceRecordMapper.selectByDepartmentAndNameAndDate(department, name, restStartDate);
+                    if (CollectionUtils.isEmpty(attendanceRecordPos)){
+                        attendanceRecordPos = attendanceRecordMapper.selectByDepartmentAndNameAndDate(null, name, restStartDate);
+                    }
+                    if (CollectionUtils.isNotEmpty(attendanceRecordPos) && attendanceRecordPos.size() > 1){
+                        System.out.println(name + restStartDate+" 有两条打开数据，特殊情况，需要人工处理");
+                        restStartDate = restStartDate.plusDays(1);
+                        continue;
+                    }
+                    String restDateStr = restStartDate.format(DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_B));
+                    //第一天要考虑是否全天调休，还要考虑是不是同一天
+                    if (restStartDate.equals(restEndDate) && i==0){
+                        //调休一整天
+                        if (!restStartTime.isAfter(fixedStartTime) && !restEndTime.isBefore(fixedEndTime)){
+                            if (CollectionUtils.isNotEmpty(attendanceRecordPos)){
+                                //有打卡记录，直接设置为调休
+                                updateRepairTypeByNameAndDepartAndDate(AttendanceType.TXJ.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                            }
+                            //没有打卡记录插入一条
+                            else {
+                                genrateAndinsertAttendanceRecord(data, restDateStr, AttendanceType.TXJ.getCode());
+                            }
+                        }else {
+                            //
+                            if (CollectionUtils.isEmpty(attendanceRecordPos)){
+                                //调休时间不在上班时间之后，则是上午调休
+                                if (!restStartTime.isAfter(fixedStartTime)){
+                                    genrateAndinsertAttendanceRecord(data, restDateStr, AttendanceType.ZT.getCode());
+                                }else {
+                                    genrateAndinsertAttendanceRecord(data, restDateStr, AttendanceType.CD.getCode());
+                                }
+                            }else {
+                                if (StringUtils.isBlank(attendanceRecordPos.get(0).getActualStartWorkTime()) && attendanceRecordPos.get(0).getRemark().contains("没有打卡记录，由程序补卡")){
+                                    restStartDate = restStartDate.plusDays(1);
+                                    continue;
+                                }
+                                LocalTime actualStartWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getActualStartWorkTime(), timeFormatter);
+                                LocalTime actualEndWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getActualEndWorkTime(), timeFormatter);
+                                //调休时间不在上班时间之后，则是上午调休
+                                if (!restStartTime.isAfter(fixedStartTime)){
+                                    //实际上班打卡时间不晚于调休结束时间
+                                    if (!actualStartWorkTime.isAfter(restEndTime)){
+                                        //实际下班时间不早于下班打卡时间
+                                        if (!actualEndWorkTime.isBefore(fixedEndTime)){
+                                            updateRepairTypeByNameAndDepartAndDate(AttendanceType.TXJ.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                        }else {
+                                            String remark = "有调休（" +data.getStartTime()+"~"+data.getEndTime()+"），但考勤数据早退。";
+                                            updateRepairTypeByNameAndDepartAndDate(AttendanceType.ZT.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                            updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), restDateStr);
+                                        }
+                                    }else {
+                                        //上午上班时间
+                                        LocalTime amOffWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getAttendanceDate()+" 12:00:00", DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+                                        LocalTime pmWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getAttendanceDate()+" 14:00:00", DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+                                        if (!restEndTime.isBefore(amOffWorkTime) && !actualStartWorkTime.isAfter(pmWorkTime)){
+                                            updateRepairTypeByNameAndDepartAndDate(AttendanceType.TXJ.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                        }else {
+                                            String remark = "有调休（" +data.getStartTime()+"~"+data.getEndTime()+"），但考勤数据仍然迟到。";
+                                            updateRepairTypeByNameAndDepartAndDate(AttendanceType.CD.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                            updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), restDateStr);
+                                        }
+                                    }
+                                }
+                                //下午调休
+                                else {
+                                    //实际上班打卡时间不晚于调休结束时间，说明是正常的考勤
+                                    if (fixedStartTime.isBefore(actualStartWorkTime)){
+                                        String remark = "有调休（" +data.getStartTime()+"~"+data.getEndTime()+"），但考勤数据迟到。";
+                                        updateRepairTypeByNameAndDepartAndDate(AttendanceType.CD.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                        updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), restDateStr);
+                                    }else if (actualEndWorkTime.isAfter(restStartTime)){
+                                        updateRepairTypeByNameAndDepartAndDate(AttendanceType.TXJ.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                    }else {
+                                        //下午上班时间
+                                        LocalTime pmWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getAttendanceDate()+" "+ConstantUtil.NOON_FIXED_START_TIME, DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+                                        //上午上班时间
+                                        LocalTime amOffWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getAttendanceDate()+" "+ConstantUtil.MORNING_FIXED_END_TIME, DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+                                        if (restStartTime.isAfter(amOffWorkTime) && actualEndWorkTime.isBefore(pmWorkTime)){
+                                            updateRepairTypeByNameAndDepartAndDate(AttendanceType.TXJ.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                        }else {
+                                            String remark = "有调休（" +data.getStartTime()+"~"+data.getEndTime()+"），但考勤数据早退。";
+                                            updateRepairTypeByNameAndDepartAndDate(AttendanceType.ZT.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                            updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), restDateStr);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }else {
+                        if (i == 0){
+                            //调休开始时间不晚于指定上班开始时间，说明第一天是全天调休
+                            if (!restStartTime.isAfter(fixedStartTime)){
+                                if (CollectionUtils.isNotEmpty(attendanceRecordPos)){
+                                    //有打卡记录，直接设置为调休
+                                    updateRepairTypeByNameAndDepartAndDate(AttendanceType.TXJ.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                }
+                                //没有打卡记录插入一条
+                                else {
+                                    genrateAndinsertAttendanceRecord(data, restDateStr, AttendanceType.TXJ.getCode());
+                                }
+                            }else {
+                                if (CollectionUtils.isNotEmpty(attendanceRecordPos)){
+                                    if (StringUtils.isBlank(attendanceRecordPos.get(0).getActualStartWorkTime()) && attendanceRecordPos.get(0).getRemark().contains("没有打卡记录，由程序补卡")){
+                                        restStartDate = restStartDate.plusDays(1);
+                                        continue;
+                                    }
+                                    LocalTime actualStartWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getActualStartWorkTime(), timeFormatter);
+                                    LocalTime actualEndWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getActualEndWorkTime(), timeFormatter);
+                                    if (!actualStartWorkTime.isBefore(fixedStartTime)){
+                                        String remark = "有调休（" +data.getStartTime()+"~"+data.getEndTime()+"），但考勤数据迟到。";
+                                        updateRepairTypeByNameAndDepartAndDate(AttendanceType.CD.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                        updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), restDateStr);
+                                    }else if (!actualEndWorkTime.isBefore(restStartTime)){
+                                        String remark = "有调休（" +data.getStartTime()+"~"+data.getEndTime()+"），但考勤数据早退。";
+                                        updateRepairTypeByNameAndDepartAndDate(AttendanceType.ZT.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                        updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), restDateStr);
+                                    }else {
+                                        updateRepairTypeByNameAndDepartAndDate(AttendanceType.TXJ.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                    }
+                                }else {
+                                    genrateAndinsertAttendanceRecord(data, restDateStr, AttendanceType.CD.getCode());
+                                }
+
+                            }
+                        }
+                        //最后一天
+                        else if (restStartDate.equals(restEndDate)){
+                            if (CollectionUtils.isNotEmpty(attendanceRecordPos)){
+                                if (!restEndTime.isBefore(fixedEndTime)){
+                                    updateRepairTypeByNameAndDepartAndDate(AttendanceType.TXJ.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                }else {
+                                    if (StringUtils.isBlank(attendanceRecordPos.get(0).getActualStartWorkTime()) && attendanceRecordPos.get(0).getRemark().contains("没有打卡记录，由程序补卡")){
+                                        restStartDate = restStartDate.plusDays(1);
+                                        continue;
+                                    }
+                                    LocalTime actualStartWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getActualStartWorkTime(), timeFormatter);
+                                    LocalTime actualEndWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getActualEndWorkTime(), timeFormatter);
+                                    //下午上班时间
+                                    LocalTime pmWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getAttendanceDate()+" "+ConstantUtil.NOON_FIXED_START_TIME, DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+                                    //上午上班时间
+                                    LocalTime amOffWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getAttendanceDate()+" "+ConstantUtil.MORNING_FIXED_END_TIME, DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+                                    LocalTime pmOffWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getAttendanceDate()+" "+ConstantUtil.FIXED_END_TIME, DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+                                    if (!restEndTime.isBefore(pmWorkTime)){
+                                        if (!actualStartWorkTime.isBefore(restEndTime)){
+                                            String remark = "有调休（" +data.getStartTime()+"~"+data.getEndTime()+"），但考勤数据迟到。";
+                                            updateRepairTypeByNameAndDepartAndDate(AttendanceType.CD.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                            updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), restDateStr);
+                                        }else if (actualEndWorkTime.isBefore(pmOffWorkTime)){
+                                            String remark = "有调休（" +data.getStartTime()+"~"+data.getEndTime()+"），但考勤数据早退。";
+                                            updateRepairTypeByNameAndDepartAndDate(AttendanceType.ZT.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                            updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), restDateStr);
+                                        }else {
+                                            updateRepairTypeByNameAndDepartAndDate(AttendanceType.TXJ.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                        }
+                                    }else if (restEndTime.isBefore(amOffWorkTime)){
+                                        if (!actualStartWorkTime.isAfter(restEndTime)){
+                                            if (actualEndWorkTime.isBefore(pmOffWorkTime)){
+                                                String remark = "有调休（" +data.getStartTime()+"~"+data.getEndTime()+"），但考勤数据早退。";
+                                                updateRepairTypeByNameAndDepartAndDate(AttendanceType.ZT.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                                updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), restDateStr);
+                                            }else {
+                                                updateRepairTypeByNameAndDepartAndDate(AttendanceType.TXJ.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                            }
+                                        }else {
+                                            String remark = "有调休（" +data.getStartTime()+"~"+data.getEndTime()+"），但考勤数据迟到。";
+                                            updateRepairTypeByNameAndDepartAndDate(AttendanceType.CD.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                            updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), restDateStr);
+                                        }
+                                    }else {
+                                        if (!actualStartWorkTime.isAfter(pmOffWorkTime)){
+                                            if (actualEndWorkTime.isBefore(pmOffWorkTime)){
+                                                String remark = "有调休（" +data.getStartTime()+"~"+data.getEndTime()+"），但考勤数据早退。";
+                                                updateRepairTypeByNameAndDepartAndDate(AttendanceType.ZT.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                                updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), restDateStr);
+                                            }else {
+                                                updateRepairTypeByNameAndDepartAndDate(AttendanceType.TXJ.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                            }
+                                        }else {
+                                            String remark = "有调休（" +data.getStartTime()+"~"+data.getEndTime()+"），但考勤数据迟到。";
+                                            updateRepairTypeByNameAndDepartAndDate(AttendanceType.CD.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                            updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), restDateStr);
+                                        }
+                                    }
+                                }
+                            }else {
+                                if (!restEndTime.isBefore(fixedEndTime)){
+                                    genrateAndinsertAttendanceRecord(data, restDateStr, AttendanceType.TXJ.getCode());
+                                }else {
+                                    genrateAndinsertAttendanceRecord(data, restDateStr, AttendanceType.ZT.getCode());
+                                }
+                            }
+                        }else {
+                            if (CollectionUtils.isNotEmpty(attendanceRecordPos)){
+                                updateRepairTypeByNameAndDepartAndDate(AttendanceType.TXJ.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                            }else {
+                                genrateAndinsertAttendanceRecord(data, restDateStr, AttendanceType.TXJ.getCode());
+                            }
+                        }
+                    }
+                    restStartDate = restStartDate.plusDays(1);
+                }
+                // 达到BATCH_COUNT了，需要去存储一次数据库，防止数据几万条数据在内存，容易OOM
+                if (cachedRestDataList.size() >= BATCH_COUNT) {
+                    saveData();
+                    // handleAttendanceExceptionData(attendanceRecordDatas, cachedRestDataList);
+                    // 存储完成清理 list
+                    cachedRestDataList = new ArrayList<>(BATCH_COUNT);
+                }
+            }
+
+            @Override
+            public void doAfterAllAnalysed(AnalysisContext analysisContext) {
+                saveData();
+                deleteData();
+                // handleAttendanceExceptionData(attendanceRecordDatas, cachedRestDataList);
+            }
+
+            @Override
+            public void onException(Exception exception, AnalysisContext analysisContext) throws Exception {
+                throw exception;
+            }
+
+            @Override
+            public void invokeHead(Map map, AnalysisContext analysisContext) {}
+
+            @Override
+            public void extra(CellExtra cellExtra, AnalysisContext analysisContext) {}
+
+            @Override
+            public boolean hasNext(AnalysisContext analysisContext) {
+                return true;
+            }
+
+            private void saveData() {
+                attendanceFileDataMapper.saveRestBatch(cachedRestDataList);
+            }
+
+            private void deleteData() {
+                if (CollectionUtils.isNotEmpty(needRemoveExceptionDataIds)) {
+                    List<AttendanceExceptionDataPo> pos = attendanceExceptionMapper.selectByIds(needRemoveExceptionDataIds);
+                    attendanceExceptionMapper.batchInsert(pos);
+                    attendanceExceptionMapper.deleteByIds(needRemoveExceptionDataIds);
+                }
+            }
+
+        }).sheet().doRead();
+    }
+
+    private void genrateAndinsertAttendanceRecord(ImportRest data, String restDateStr, Integer type) {
+        AttendanceRecordPo attendanceRecord = new AttendanceRecordPo();
+        // 根据部门名称和名字查询最新一条考勤记录
+        AttendanceRecordPo latestByDeptAndName = attendanceRecordMapper.selectLatestByDepartmentAndNameAndDate(data.getDepartment(), data.getName(),null);
+        if (latestByDeptAndName == null) {
+            latestByDeptAndName = attendanceRecordMapper.selectLatestByDepartmentAndNameAndDate(null, data.getName(), null);
+        }
+        //插入考勤记录
+        if (latestByDeptAndName != null){
+            attendanceRecord.setPersonId(latestByDeptAndName.getPersonId());
+            attendanceRecord.setName(data.getName());
+            attendanceRecord.setDepartment(data.getDepartment());
+            attendanceRecord.setAttendanceDate(restDateStr);
+            attendanceRecord.setCreateTime(new Date());
+            attendanceRecord.setType(type);
+            attendanceRecord.setRemark("调休假，没有打卡记录，由程序补卡，调休时间为："+data.getStartTime()+"至"+data.getEndTime());
+            attendanceRecordMapper.insertRecord(attendanceRecord);
+        }
+    }
+
+
+    /**
+     * 综合休假数据处理
+     * @param inputStream
+     * @param fileId
+     */
+    private void handleCompVacation(InputStream inputStream, Integer fileId) {
+
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_B);
+
+        EasyExcel.read(inputStream, ImportCompVacation.class, new ReadListener<ImportCompVacation>() {
+
+            /**
+             * 缓存的数据
+             */
+            private List<ImportVacation> cachedVacationDataList = new ArrayList<>(BATCH_COUNT);
+
+
+            private List<String> needRemoveExceptionDataIds = new ArrayList<>();
+
+            @Override
+            public void invoke(ImportCompVacation data, AnalysisContext analysisContext) {
+
+                String department = data.getDepartment();
+                String keyStr = "深圳市税务局_稽查局_";
+                if (department.contains(keyStr)){
+                    department = department.replace(keyStr, "");
+                    data.setDepartment(department);
+                }
+                data.setFileId(fileId);
+                ImportVacation importVacation = new ImportVacation();
+                importVacation.setDepartment(data.getDepartment());
+                importVacation.setFileId(fileId);;
+                importVacation.setActEndTime(data.getActEndTime());
+                importVacation.setActStartTime(data.getActStartTime());
+                importVacation.setApprovalStatus(data.getApprovalStatus());
+                importVacation.setEndTime(data.getEndTime());
+                importVacation.setLeaveDay(data.getLeaveDay());
+                importVacation.setName(data.getName());
+                importVacation.setPosition(data.getPositionLevel());
+                importVacation.setStartTime(data.getStartTime());
+                importVacation.setVacationType(data.getVacationType());
+                cachedVacationDataList.add(importVacation);
+                String name = data.getName();
+
+                LocalDate vacationActStartDate = LocalDate.parse(data.getActStartTime(), dateFormatter);
+                LocalDate vacationActEndDate = LocalDate.parse(data.getActEndTime(), dateFormatter);
+                //获取到请假的异常考勤
+                List<SysAllDatePo> sysAllDatePos = attendanceRecordMapper.getDateBeetStartAndEndDate(vacationActStartDate, vacationActEndDate);
+//                List<AttendanceExceptionDataPo> exceptionDataPos = attendanceExceptionMapper.selectDataByActStartAndEndDate(name, null, vacationActStartDate, vacationActEndDate);
+                //最后一天休假是否没有打卡
+                boolean firstDayHasCard = false;
+                //实际休假时间
+                BigDecimal actualLeavyDay = BigDecimal.ZERO.setScale(1, RoundingMode.HALF_UP);
+                for (int i=0; i<sysAllDatePos.size(); i++){
+                    SysAllDatePo datePo = sysAllDatePos.get(i);
+//                    AttendanceExceptionDataPo exceptionDataPo = exceptionDataPos.get(i);
+
+                    //判断是否节假日，如果是则无需处理
+                    if (attendanceNonWorkDayMapper.selectCountByDate(LocalDate.parse(datePo.getDateStr(), DateTimeFormatter.ofPattern("yyyy-MM-dd"))) > 0){
+                        continue;
+                    }
+                    Integer repairType = AttendanceType.getCodeByName(data.getVacationType());
+
+                    //按日期获取考勤
+                    List<AttendanceRecordPo> attendanceRecordPos = attendanceRecordMapper.selectByDepartmentAndNameAndDate(department, name, LocalDate.parse(datePo.getDateStr(), DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                    if (CollectionUtils.isEmpty(attendanceRecordPos)){
+                        attendanceRecordPos = attendanceRecordMapper.selectByDepartmentAndNameAndDate(null, name, LocalDate.parse(datePo.getDateStr(), DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                    }
+
+                    //没有打卡
+                    if (CollectionUtils.isEmpty(attendanceRecordPos)){
+                        actualLeavyDay = actualLeavyDay.add(BigDecimal.ONE);
+                        AttendanceRecordPo attendanceRecord = new AttendanceRecordPo();
+                        // 根据部门名称和名字查询最新一条考勤记录
+                        AttendanceRecordPo latestByDeptAndName = attendanceRecordMapper.selectLatestByDepartmentAndNameAndDate(data.getDepartment(), data.getName(),null);
+                        if (latestByDeptAndName == null) {
+                            latestByDeptAndName = attendanceRecordMapper.selectLatestByDepartmentAndNameAndDate(null, data.getName(), null);
+                        }
+                        //插入考勤记录
+                        if (latestByDeptAndName != null){
+                            attendanceRecord.setPersonId(latestByDeptAndName.getPersonId());
+                            attendanceRecord.setName(data.getName());
+                            attendanceRecord.setDepartment(data.getDepartment());
+                            attendanceRecord.setAttendanceDate(datePo.getDateStr());
+                            attendanceRecord.setCreateTime(new Date());
+                            attendanceRecord.setPosition(data.getPosition());
+                            if (BigDecimal.valueOf(data.getLeaveDay()).compareTo(BigDecimal.ONE) >=0){
+                                attendanceRecord.setType(repairType);
+                                attendanceRecord.setRemark(data.getVacationType()+"，没有打卡记录，由程序补卡，请假时间为："+vacationActStartDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))+"至"+vacationActEndDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+//                                attendanceRecord.setActualStartWorkTime("09:00:00");
+//                                attendanceRecord.setActualEndWorkTime("18:00:00");
+                            }else {
+                                attendanceRecord.setType(AttendanceType.KG.getCode());
+                                attendanceRecord.setRemark(data.getVacationType()+"时间为"+vacationActStartDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))+"，不足一天，缺少考勤时间，视为旷工");
+                            }
+                            attendanceRecordMapper.insertRecord(attendanceRecord);
+                        }
+
+                        if (i == sysAllDatePos.size() -1 && firstDayHasCard){
+                            //如果实际休假时长小于请假时长，则是正常休假
+                            if (actualLeavyDay.compareTo(BigDecimal.valueOf(data.getLeaveDay()).setScale(1, RoundingMode.HALF_UP)) <= 0){
+                                updateRepairTypeByNameAndDepartAndDate(repairType, data.getName(), data.getDepartment(), datePo.getDateStr());
+                            }else {
+                                //第一天异常休假
+                                String remark = "有"+data.getVacationType()+"（"+data.getActStartTime()+"至"+data.getActEndTime()+"，总"+data.getLeaveDay()+"天），其中第一天实际休假时间超过0.5天。";
+                                updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), sysAllDatePos.get(0).getDateStr());
+                            }
+                        }
+                    }
+                    //有打卡
+                    else if (attendanceRecordPos.size() == 1){
+                        if (attendanceRecordPos.get(0).getType() > 4 && StringUtils.isBlank(attendanceRecordPos.get(0).getActualStartWorkTime()) && attendanceRecordPos.get(0).getRemark().contains("没有打卡记录，由程序补卡")){
+                            actualLeavyDay = actualLeavyDay.add(BigDecimal.ONE);
+                            continue;
+                        }
+                        //上午上班时间
+                        LocalTime amWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getAttendanceDate()+" "+ConstantUtil.FIXED_START_TIME, DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+                        //下午上班时间
+                        LocalTime pmWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getAttendanceDate()+" "+ConstantUtil.NOON_FIXED_START_TIME, DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+                        //上午上班时间
+                        LocalTime amOffWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getAttendanceDate()+" "+ConstantUtil.MORNING_FIXED_END_TIME, DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+                        LocalTime pmOffWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getAttendanceDate()+" "+ConstantUtil.FIXED_END_TIME, DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+                        //如果是第一天
+                        if (i == 0) {
+                            firstDayHasCard = true;
+                            Boolean isPmRest = false;
+                            LocalTime actualStartWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getAttendanceDate() + " " + attendanceRecordPos.get(0).getActualStartWorkTime(), DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+                            LocalTime actualEndWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getAttendanceDate() + " " + attendanceRecordPos.get(0).getActualEndWorkTime(), DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+                            if (actualEndWorkTime.isAfter(pmOffWorkTime)){
+                                if (actualStartWorkTime.isBefore(pmWorkTime)){
+                                    actualLeavyDay = actualLeavyDay.add(new BigDecimal("0.5"));
+                                }else {
+                                    actualLeavyDay = actualLeavyDay.add(BigDecimal.ONE);
+                                }
+                            }else if (actualEndWorkTime.isAfter(amOffWorkTime)){
+//                                isPmRest = true;
+                                if (actualStartWorkTime.isBefore(amWorkTime)){
+                                    actualLeavyDay = actualLeavyDay.add(new BigDecimal("0.5"));
+                                }else {
+                                    actualLeavyDay = actualLeavyDay.add(BigDecimal.ONE);
+                                }
+                            }else {
+                                actualLeavyDay = actualLeavyDay.add(BigDecimal.ONE);
+                            }
+                            //只请了一天内的假
+//                            if (BigDecimal.valueOf(data.getLeaveDay()).compareTo(BigDecimal.ONE) == 0) {
+                                //判断上班时间请假还是下班时间请假
+//                                LocalDateTime actualStartWorkTime = LocalDateTime.parse(attendanceRecordPos.get(0).getAttendanceDate() + " " + attendanceRecordPos.get(0).getActualStartWorkTime(), DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+                                //实际上班时间早于规定上班时间，则为下午请假
+//                                if (actualStartWorkTime.isBefore(amWorkTime)) {
+//
+//                                } else if (actualStartWorkTime.isBefore(pmWorkTime)) {
+//                                    //在下午上班前打卡，请假为半天
+//                                    actualLeavyDay = actualLeavyDay.add(new BigDecimal("0.5"));
+//                                } else {
+//                                    //在下午上班后打卡，请假为一天
+//                                    actualLeavyDay = actualLeavyDay.add(BigDecimal.ONE);
+//                                }
+//                            }else {
+
+//                            }
+//                            if (isPmRest) {
+//                                //下班时间是在上午下班之前，则定义为请假一天
+//                                if (actualEndWorkTime.isBefore(amOffWorkTime)) {
+//                                    actualLeavyDay = actualLeavyDay.add(BigDecimal.ONE);
+//                                } else {
+//                                    actualLeavyDay = actualLeavyDay.add(new BigDecimal("0.5"));
+//                                }
+//                            }
+
+                            //只请了一天内的假，且日期是同一天，也有可能是两个日期，一个日期半天
+                            if (data.getLeaveDay().intValue() <= 1 && sysAllDatePos.size() == 1) {
+                                //实际休假的天数<=请假时长，则是正常考勤，直接移除异常数据并置为请假类型
+                                if (actualLeavyDay.compareTo(BigDecimal.valueOf(data.getLeaveDay()).setScale(1, RoundingMode.HALF_UP)) <= 0) {
+                                    updateRepairTypeByNameAndDepartAndDate(repairType, attendanceRecordPos.get(0).getName(), attendanceRecordPos.get(0).getDepartment(), attendanceRecordPos.get(0).getAttendanceDate());
+                                } else {
+                                    String remark = "有" + data.getVacationType() + "（" + data.getLeaveDay() + "天），但考勤数据超过" + data.getLeaveDay() + "天。";
+                                    updateRemarkByNameAndDepartAndDate(remark, attendanceRecordPos.get(0).getName(), attendanceRecordPos.get(0).getDepartment(), attendanceRecordPos.get(0).getAttendanceDate());
+                                }
+                            }else {
+                                updateRepairTypeByNameAndDepartAndDate(repairType, attendanceRecordPos.get(0).getName(), attendanceRecordPos.get(0).getDepartment(), attendanceRecordPos.get(0).getAttendanceDate());
+                            }
+                        }
+                        //如果是最后一天
+                        else if (i == sysAllDatePos.size()-1){
+                            //如果是程序自动生成的打卡，则不处理
+                            if (attendanceRecordPos.get(0).getType() > 4 && StringUtils.isBlank(attendanceRecordPos.get(0).getActualStartWorkTime()) && attendanceRecordPos.get(0).getRemark().contains("没有打卡记录，由程序补卡")){
+                                actualLeavyDay = actualLeavyDay.add(BigDecimal.ONE);
+                            }else {
+                                //上班时间在下午上班之前,则定义为请假半天
+                                LocalTime actualStartWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getAttendanceDate()+" "+attendanceRecordPos.get(0).getActualStartWorkTime(), DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+                                if (actualStartWorkTime.isBefore(pmWorkTime)){
+                                    actualLeavyDay = actualLeavyDay.add(new BigDecimal("0.5"));
+                                }else if (actualStartWorkTime.isAfter(amWorkTime)){
+                                    actualLeavyDay = actualLeavyDay.add(BigDecimal.ONE);
+                                }
+                                //如果实际休假时长小于请假时长，则是正常休假
+                                if (actualLeavyDay.compareTo(BigDecimal.valueOf(data.getLeaveDay()).setScale(1, RoundingMode.HALF_UP)) <= 0){
+                                    updateRepairTypeByNameAndDepartAndDate(repairType, attendanceRecordPos.get(0).getName(), attendanceRecordPos.get(0).getDepartment(), attendanceRecordPos.get(0).getAttendanceDate());
+                                }else {
+                                    //异常休假，则要判断是处理第一天还是最后一天
+                                    if (firstDayHasCard){
+                                        //如果最后一天的实际休假时长在半天内，我们处理第一天，如果最后一天休假超过半天，我们处理最后一天
+                                        //下午上班后才打卡，则视为最后一天上班异常
+                                        if (actualStartWorkTime.isAfter(pmWorkTime)){
+                                            String remark = "有"+data.getVacationType()+"（"+data.getActStartTime()+"至"+data.getActEndTime()+"，总"+data.getLeaveDay()+"天），其中最后一天实际休假时间超过0.5天。";
+                                            updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), datePo.getDateStr());
+                                        }else {
+                                            String remark = "有"+data.getVacationType()+"（"+data.getActStartTime()+"至"+data.getActEndTime()+"，总"+data.getLeaveDay()+"天），其中第一天实际休假时间超过0.5天。";
+                                            updateRemarkByNameAndDepartAndDate(remark, attendanceRecordPos.get(0).getName(), attendanceRecordPos.get(0).getDepartment(), sysAllDatePos.get(0).getDateStr());
+                                        }
+                                    }
+                                    //第一天如果没有打卡，则处理最后一天
+                                    else {
+                                        //最后一天异常休假
+                                        String remark = "有"+data.getVacationType()+"（"+data.getActStartTime()+"至"+data.getActEndTime()+"，总"+data.getLeaveDay()+"天），其中最后一天实际休假时间超过0.5天。";
+                                        updateRemarkByNameAndDepartAndDate(remark, attendanceRecordPos.get(0).getName(), attendanceRecordPos.get(0).getDepartment(), datePo.getDateStr());
+                                    }
+                                }
+                            }
+                        }else {
+                            actualLeavyDay = actualLeavyDay.add(BigDecimal.ONE);
+                            updateRepairTypeByNameAndDepartAndDate(repairType, attendanceRecordPos.get(0).getName(), attendanceRecordPos.get(0).getDepartment(), attendanceRecordPos.get(0).getAttendanceDate());
+                        }
+                    }
+                    //打卡数据超过一条
+                    else {
+                        System.out.println(name+datePo.getDateStr()+"打卡数据超过一调，特殊情况不处理，等人工处理");
+                        //特殊情况不处理，等人工处理
+                        continue;
+                    }
+                    //考勤数据的标准是有开始时间就有结束时间，有可能两个时间数据一样，但不可能一个存在一个不存在
+                    //当开始时间为空则说明考勤记录缺卡
+//                    if (StringUtils.isBlank(exceptionDataPo.getActualStartWorkTime())){
+//                        actualLeavyDay = actualLeavyDay.add(BigDecimal.ONE);
+//                        needRemoveExceptionDataIds.add(exceptionDataPo.getId());
+//                        AttendanceRecordPo attendanceRecord = new AttendanceRecordPo();
+//                        // 根据部门名称和名字查询最新一条考勤记录
+//                        AttendanceRecordPo latestByDeptAndName = attendanceRecordMapper.selectLatestByDepartmentAndNameAndDate(data.getDepartment(), data.getName(),null);
+//                        if (latestByDeptAndName == null) {
+//                            latestByDeptAndName = attendanceRecordMapper.selectLatestByDepartmentAndNameAndDate(null, data.getName(), null);
+//                        }
+//                        //插入考勤记录
+//                        if (latestByDeptAndName != null){
+//                            attendanceRecord.setPersonId(latestByDeptAndName.getPersonId());
+//                            attendanceRecord.setName(data.getName());
+//                            attendanceRecord.setDepartment(data.getDepartment());
+//                            attendanceRecord.setAttendanceDate(LocalDate.parse(exceptionDataPo.getAttendanceDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+//                            attendanceRecord.setType(repairType);
+//                            attendanceRecord.setRepairType(repairType);
+//                            attendanceRecord.setRemark(data.getVacationType()+"，没有打卡记录，由程序补卡");
+//                            attendanceRecord.setCreateTime(new Date());
+//                            attendanceRecord.setPosition(data.getPosition());
+//                            attendanceRecord.setActualEndWorkTime(LocalTime.parse("09:00:00", DateTimeFormatter.ofPattern("HH:mm:ss")));
+//                            attendanceRecord.setActualStartWorkTime(LocalTime.parse("18:00:00", DateTimeFormatter.ofPattern("HH:mm:ss")));
+//                            attendanceRecordMapper.insertRecord(attendanceRecord);
+//                        }
+//                        updateRepairTypeByNameAndDepartAndDate(repairType, data.getName(), data.getDepartment(), exceptionDataPo.getAttendanceDate());
+//                        //如果最后一天是完整的休假一天，则要判断第一天是否有打卡，有的话要判断是否正常休假
+//                        if (i == exceptionDataPos.size() -1 && firstDayHasCard){
+//                            //如果实际休假时长小于请假时长，则是正常休假
+//                            if (actualLeavyDay.compareTo(BigDecimal.valueOf(data.getLeaveDay()).setScale(1, RoundingMode.HALF_UP)) <= 0){
+//                                needRemoveExceptionDataIds.add(exceptionDataPo.getId());
+//                                updateRepairTypeByNameAndDepartAndDate(repairType, data.getName(), data.getDepartment(), exceptionDataPo.getAttendanceDate());
+//                            }else {
+//                                //第一天异常休假
+//                                String remark = "有"+data.getVacationType()+"（"+data.getActStartTime()+"至"+data.getActEndTime()+"，总"+data.getLeaveDay()+"天），其中第一天实际休假时间超过0.5天。";
+//                                updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), exceptionDataPos.get(0).getAttendanceDate());
+//                            }
+//                        }
+//                    }else {
+//                        //上午上班时间
+//                        LocalDateTime amWorkTime = LocalDateTime.parse(exceptionDataPo.getAttendanceDate()+" 09:00:00", DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+//                        //下午上班时间
+//                        LocalDateTime pmWorkTime = LocalDateTime.parse(exceptionDataPo.getAttendanceDate()+" 14:00:00", DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+//                        //上午上班时间
+//                        LocalDateTime amOffWorkTime = LocalDateTime.parse(exceptionDataPo.getAttendanceDate()+" 12:00:00", DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+//                        //下午上班时间
+//                        LocalDateTime pmOffWorkTime = LocalDateTime.parse(exceptionDataPo.getAttendanceDate()+" 18:00:00", DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+//                        //如果是第一天
+//                        if (i == 0){
+//                            firstDayHasCard = true;
+//                            //只请了一天内的假
+//                            Boolean isPmRest = false;
+//                            if (exceptionDataPos.size() == 1){
+//                                //判断上班时间请假还是下班时间请假
+//                                LocalDateTime actualStartWorkTime = LocalDateTime.parse(exceptionDataPo.getAttendanceDate() + " " + exceptionDataPo.getActualStartWorkTime(), DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+//                                //实际上班时间早于规定上班时间，则为下午请假
+//                                if (actualStartWorkTime.isBefore(amWorkTime)){
+//                                    isPmRest = true;
+//                                }else if (actualStartWorkTime.isBefore(pmWorkTime)){
+//                                    //在下午上班前打卡，请假为半天
+//                                    actualLeavyDay = actualLeavyDay.add(new BigDecimal("0.5"));
+//                                }else {
+//                                    //在下午上班后打卡，请假为一天
+//                                    actualLeavyDay = actualLeavyDay.add(BigDecimal.ONE);
+//                                }
+//                            }
+//                            if (isPmRest){
+//                                //下班时间是在上午下班之前，则定义为请假一天
+//                                LocalDateTime actualEndWorkTime = LocalDateTime.parse(exceptionDataPo.getAttendanceDate() + " " + exceptionDataPo.getActualEndWorkTime(), DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+//                                if (actualEndWorkTime.isBefore(amOffWorkTime)) {
+//                                    actualLeavyDay = actualLeavyDay.add(BigDecimal.ONE);
+//                                } else {
+//                                    actualLeavyDay = actualLeavyDay.add(new BigDecimal("0.5"));
+//                                }
+//                            }
+//
+//                            //只请了一天内的假，且日期是同一天，也有可能是两个日期，一个日期半天
+//                            if (data.getLeaveDay().intValue() <= 1 && exceptionDataPos.size() == 1){
+//                                //实际休假的天数<=请假时长，则是正常考勤，直接移除异常数据并置为请假类型
+//                                if (actualLeavyDay.compareTo(BigDecimal.valueOf(data.getLeaveDay()).setScale(1, RoundingMode.HALF_UP)) <=0){
+//                                    needRemoveExceptionDataIds.add(exceptionDataPo.getId());
+//                                    updateRepairTypeByNameAndDepartAndDate(repairType, data.getName(), data.getDepartment(), exceptionDataPo.getAttendanceDate());
+//                                }else {
+//                                    String remark = "有"+data.getVacationType()+"（"+data.getLeaveDay()+"天），但考勤数据超过"+data.getLeaveDay()+"天。";
+//                                    updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), exceptionDataPo.getAttendanceDate());
+//                                }
+//                            }
+//                        }
+//                        //如果是最后一天
+//                        else if (i == exceptionDataPos.size()-1){
+//                            //上班时间在下午上班之前,则定义为请假半天
+//                            LocalDateTime actualStartWorkTime = LocalDateTime.parse(exceptionDataPo.getAttendanceDate()+" "+exceptionDataPo.getActualStartWorkTime(), DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+//                            if (actualStartWorkTime.isBefore(pmWorkTime)){
+//                                actualLeavyDay = actualLeavyDay.add(new BigDecimal("0.5"));
+//                            }else if (actualStartWorkTime.isAfter(amWorkTime)){
+//                                actualLeavyDay = actualLeavyDay.add(BigDecimal.ONE);
+//                            }
+//                            //如果实际休假时长小于请假时长，则是正常休假
+//                            if (actualLeavyDay.compareTo(BigDecimal.valueOf(data.getLeaveDay()).setScale(1, RoundingMode.HALF_UP)) <= 0){
+//                                needRemoveExceptionDataIds.add(exceptionDataPo.getId());
+//                                updateRepairTypeByNameAndDepartAndDate(repairType, data.getName(), data.getDepartment(), exceptionDataPo.getAttendanceDate());
+//                            }else {
+//                                //异常休假，则要判断是处理第一天还是最后一天
+//                                if (firstDayHasCard){
+//                                    //如果最后一天的实际休假时长在半天内，我们处理第一天，如果最后一天休假超过半天，我们处理最后一天
+//                                    //下午上班后才打卡，则视为最后一天上班异常
+//                                    if (actualStartWorkTime.isAfter(pmWorkTime)){
+//                                        String remark = "有"+data.getVacationType()+"（"+data.getActStartTime()+"至"+data.getActEndTime()+"，总"+data.getLeaveDay()+"天），其中最后一天实际休假时间超过0.5天。";
+//                                        updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), exceptionDataPo.getAttendanceDate());
+//                                    }else {
+//                                        String remark = "有"+data.getVacationType()+"（"+data.getActStartTime()+"至"+data.getActEndTime()+"，总"+data.getLeaveDay()+"天），其中第一天实际休假时间超过0.5天。";
+//                                        updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), exceptionDataPos.get(0).getAttendanceDate());
+//                                    }
+//                                }
+//                                //第一天如果没有打卡，则处理最后一天
+//                                else {
+//                                    //最后一天异常休假
+//                                    String remark = "有"+data.getVacationType()+"（"+data.getActStartTime()+"至"+data.getActEndTime()+"，总"+data.getLeaveDay()+"天），其中最后一天实际休假时间超过0.5天。";
+//                                    updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), exceptionDataPo.getAttendanceDate());
+//                                }
+//
+//                            }
+//                        }
+//                    }
+                }
+
+
+                // 达到BATCH_COUNT了，需要去存储一次数据库，防止数据几万条数据在内存，容易OOM
+                if (cachedVacationDataList.size() >= BATCH_COUNT) {
+                    saveData();
+                    // 当前读取到的数据结合考勤记录中数据计算出是否是考勤异常数据
+                    // handleAttendanceExceptionData(attendanceRecordDatas, cachedVacationDataList);
+
+                    // 存储完成清理 list
+                    cachedVacationDataList = new ArrayList<>(BATCH_COUNT);
+                }
+            }
+
+            @Override
+            public void doAfterAllAnalysed(AnalysisContext analysisContext) {
+                // 这里也要保存数据，确保最后遗留的数据也存储到数据库
+                saveData();
+                deleteData();
+                // handleAttendanceExceptionData(attendanceRecordDatas, cachedVacationDataList);
+            }
+
+            @Override
+            public void onException(Exception exception, AnalysisContext analysisContext) throws Exception {
+                throw exception;
+            }
+
+            @Override
+            public void extra(CellExtra cellExtra, AnalysisContext analysisContext) {}
+
+            @Override
+            public void invokeHead(Map<Integer, CellData> headMap, AnalysisContext context) {}
+
+            @Override
+            public boolean hasNext(AnalysisContext analysisContext) {
+                return true;
+            }
+
+            private void saveData() {
+                attendanceFileDataMapper.saveVacationBatch(cachedVacationDataList);
+            }
+
+            private void deleteData() {
+                if (CollectionUtils.isNotEmpty(needRemoveExceptionDataIds)) {
+                    List<AttendanceExceptionDataPo> pos = attendanceExceptionMapper.selectByIds(needRemoveExceptionDataIds);
+                    attendanceExceptionMapper.batchInsert(pos);
+                    attendanceExceptionMapper.deleteByIds(needRemoveExceptionDataIds);
+                }
+            }
+
+        }).sheet().doRead();
+    }
+
+    private void updateRemarkByNameAndDepartAndDate(String remark, String name, String department, String attendanceDate) {
+        List<AttendanceRecordDto> attendanceRecords = attendanceRecordMapper.getByNameAndDate(name, attendanceDate);
+        if (attendanceRecords.size() > 0){
+            if (attendanceRecords.size() == 1){
+                attendanceRecordMapper.updateRemarkByNameAndDepartAndDate(remark, name, null, attendanceDate);
+            }else {
+                /*int count = */attendanceRecordMapper.updateRemarkByNameAndDepartAndDate(remark, name, department, attendanceDate);
+//                if (count < 1) {
+//                    throw new BusinessException(ResponseConstant.RESULT_CODE_ERROR, "更新" + department + "“" + name + "”的"+attendanceDate+"考勤数据失败，请核查是否科室发生了变更");
+//                }
+            }
+        }
+    }
+
+    private void updateRepairTypeByNameAndDepartAndDate(Integer repairType, String name, String department, String attendanceDate) {
+        List<AttendanceRecordDto> attendanceRecords = attendanceRecordMapper.getByNameAndDate(name, attendanceDate);
+        if (attendanceRecords.size() > 0){
+            if (attendanceRecords.size() == 1){
+                attendanceRecordMapper.updateRepairTypeByNameAndDepartAndDate(repairType, name, null, attendanceDate);
+            }else {
+                attendanceRecordMapper.updateRepairTypeByNameAndDepartAndDate(repairType, name, department, attendanceDate);
+            }
+
+        }
+    }
+
+    /**
+     *
+     * @param inputStream
+     * @param fileId
+     */
+    private void handleVacation(InputStream inputStream, Integer fileId) {
+
+        EasyExcel.read(inputStream, ImportVacation.class, new ReadListener<ImportVacation>() {
+
+            /**
+             * 缓存的数据
+             */
+            private List<ImportVacation> cachedVacationDataList = new ArrayList<>(BATCH_COUNT);
+
+            private List<String> needRemoveExceptionDataIds = new ArrayList<>();
+
+            @Override
+            public void invoke(ImportVacation data, AnalysisContext analysisContext) {
+                String department = data.getDepartment();
+                String keyStr = "深圳市税务局_稽查局_";
+                if (department.contains(keyStr)){
+                    department = department.replace(keyStr, "");
+                    data.setDepartment(department);
+                }
+                data.setFileId(fileId);
+                cachedVacationDataList.add(data);
+
+//                handleAttendanceExceptionData2(data, dbExceptionInfoKeyAndValueMap, needRemoveExceptionDataIds);
+
+                // 达到BATCH_COUNT了，需要去存储一次数据库，防止数据几万条数据在内存，容易OOM
+                if (cachedVacationDataList.size() >= BATCH_COUNT) {
+                    saveData();
+                    // 当前读取到的数据结合考勤记录中数据计算出是否是考勤异常数据
+                    // handleAttendanceExceptionData(attendanceRecordDatas, cachedVacationDataList);
+
+                    // 存储完成清理 list
+                    cachedVacationDataList = new ArrayList<>(BATCH_COUNT);
+                }
+            }
+
+            @Override
+            public void doAfterAllAnalysed(AnalysisContext analysisContext) {
+                // 这里也要保存数据，确保最后遗留的数据也存储到数据库
+                saveData();
+                deleteData();
+                // handleAttendanceExceptionData(attendanceRecordDatas, cachedVacationDataList);
+            }
+
+            @Override
+            public void onException(Exception exception, AnalysisContext analysisContext) throws Exception {
+                throw exception;
+            }
+
+            @Override
+            public void extra(CellExtra cellExtra, AnalysisContext analysisContext) {}
+
+            @Override
+            public void invokeHead(Map<Integer, CellData> headMap, AnalysisContext context) {}
+
+            @Override
+            public boolean hasNext(AnalysisContext analysisContext) {
+                return true;
+            }
+
+            private void saveData() {
+                attendanceFileDataMapper.saveVacationBatch(cachedVacationDataList);
+            }
+
+            private void deleteData() {
+                if (CollectionUtils.isNotEmpty(needRemoveExceptionDataIds)) {
+                    attendanceExceptionMapper.deleteByIds(needRemoveExceptionDataIds);
+                }
+            }
+
+        }).sheet().doRead();
     }
 
     /**

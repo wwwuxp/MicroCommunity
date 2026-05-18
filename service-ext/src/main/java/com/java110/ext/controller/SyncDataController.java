@@ -87,6 +87,12 @@ public class SyncDataController {
         return ResultVo.success();
     }
 
+    @GetMapping("/writeToAttendanceSys")
+    public ResponseEntity writeToAttendanceSys(){
+        syncDataService.writeToAttendanceSys();
+        return ResultVo.success();
+    }
+
 //    /**
 //     * 查询导出数据预览（统计数量）
 //     */

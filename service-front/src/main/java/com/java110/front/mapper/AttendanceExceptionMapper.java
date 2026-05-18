@@ -5,6 +5,7 @@ import com.java110.po.attendanceException.AttendanceExceptionPo;
 import org.apache.ibatis.annotations.Param;
 
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
@@ -41,4 +42,12 @@ public interface AttendanceExceptionMapper {
      */
     void deleteByIds(List<String> needRemoveExceptionDataIds);
 
+    List<AttendanceExceptionDataPo> selectDataByActStartAndEndDate(@Param("name") String name,
+                                                                   @Param("department") String department,
+                                                                   @Param("startDate") LocalDate vacationActStartDate,
+                                                                   @Param("endDate") LocalDate vacationActEndDate);
+
+    List<AttendanceExceptionDataPo> selectByIds(@Param("ids") List<String> needRemoveExceptionDataIds);
+
+    void batchInsert(@Param("list") List<AttendanceExceptionDataPo> pos);
 }

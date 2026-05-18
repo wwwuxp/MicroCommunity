@@ -6,23 +6,24 @@ import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.java110.ext.excel.OrgStaffRelExcel;
 import com.java110.ext.excel.listener.OrgStaffExportListener;
-import com.java110.ext.mapper.DictMapper;
-import com.java110.ext.mapper.OrgMapper;
-import com.java110.ext.mapper.OrgStaffRelMapper;
-import com.java110.ext.mapper.UserMapper;
-import com.java110.ext.pojo.DictPo;
-import com.java110.ext.pojo.OrgPo;
-import com.java110.ext.pojo.OrgStaffRelPo;
-import com.java110.ext.pojo.UserPo;
+import com.java110.ext.mapper.*;
+import com.java110.ext.pojo.*;
+import com.java110.ext.pojo.attendance.SysDepartPo;
+import com.java110.ext.pojo.attendance.SysUserDepartPo;
+import com.java110.ext.pojo.attendance.SysUserPo;
+import com.java110.ext.service.AttendanceSysService;
 import com.java110.ext.service.ISyncDataService;
 import com.java110.ext.utils.KeyUtils;
+import com.java110.ext.utils.UuidUtil;
 import com.java110.ext.vo.OrgStaffVo;
+import com.java110.ext.vo.SysUserDepartVo;
+import com.java110.utils.exception.BusinessException;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +40,7 @@ import java.util.stream.IntStream;
  * 数据同步服务实现
  * 统一管理用户体系数据的导出、导入和同步
  */
+@Slf4j
 @Service("syncDataServiceImpl")
 public class SyncDataServiceImpl implements ISyncDataService {
 
@@ -54,10 +56,19 @@ public class SyncDataServiceImpl implements ISyncDataService {
     private OrgStaffRelMapper orgStaffRelMapper;
 
     @Autowired
+    private StoreUserMapper storeUserMapper;
+
+    @Autowired
+    private PrivilegeUserMapper privilegeUserMapper;
+
+    @Autowired
     private RestTemplate restTemplate;
 
     @Autowired
     private DictMapper dictMapper;
+
+    @Autowired
+    private AttendanceSysService attendanceSysService;
 
     // ==================== 同步功能 ====================
 
@@ -253,6 +264,39 @@ public class SyncDataServiceImpl implements ISyncDataService {
                         orgStaffRelPo.setBId("-8");
                         orgStaffRelPo.setSyncTime(new Date());
                         orgStaffRelMapper.insert(orgStaffRelPo);
+                    }
+                    //商户用户插入
+                    LambdaQueryWrapper<StoreUserPo> storeUserQuery = new LambdaQueryWrapper<>();
+                    storeUserQuery.eq(StoreUserPo::getUserId, userPo.getUserId());
+                    storeUserQuery.eq(StoreUserPo::getStoreId, "402021121452660010");
+                    storeUserQuery.eq(StoreUserPo::getStatusCd, "0");
+                    if (storeUserMapper.selectCount(storeUserQuery) < 1){
+                        StoreUserPo storeUserPo = new StoreUserPo();
+                        storeUserPo.setStoreUserId(KeyUtils.genKey("45"));
+                        storeUserPo.setUserId(userPo.getUserId());
+                        storeUserPo.setBId("-8");
+                        storeUserPo.setStoreId("402021121452660010");
+                        storeUserPo.setFlag("2");
+                        storeUserPo.setCreateTime(new Date());
+                        storeUserPo.setRelCd("600311000002");
+                        storeUserPo.setStatusCd("0");
+                        storeUserMapper.insert(storeUserPo);
+                    }
+                    //普通用户权限
+                    LambdaQueryWrapper<PrivilegeUserPo> privilegeUserQuery = new LambdaQueryWrapper<>();
+                    privilegeUserQuery.eq(PrivilegeUserPo::getUserId, userPo.getUserId());
+                    privilegeUserQuery.eq(PrivilegeUserPo::getStoreId, "402021121452660010");
+                    privilegeUserQuery.eq(PrivilegeUserPo::getStatusCd, "0");
+                    privilegeUserQuery.eq(PrivilegeUserPo::getPId, "6002022010746310005");
+                    if (privilegeUserMapper.selectCount(privilegeUserQuery) < 1){
+                        PrivilegeUserPo privilegeUserPo = new PrivilegeUserPo();
+                        privilegeUserPo.setUserId(userPo.getUserId());
+                        privilegeUserPo.setPId("6002022010746310005");
+                        privilegeUserPo.setStoreId("402021121452660010");
+                        privilegeUserPo.setPrivilege_flag("1");
+                        privilegeUserPo.setCreateTime(new Date());
+                        privilegeUserPo.setStatusCd("0");
+                        privilegeUserMapper.insert(privilegeUserPo);
                     }
                 });
             });
@@ -510,6 +554,40 @@ public class SyncDataServiceImpl implements ISyncDataService {
                 orgStaffRelPo.setSyncTime(new Date());
                 orgStaffRelMapper.insert(orgStaffRelPo);
             }
+
+            //商户用户插入
+            LambdaQueryWrapper<StoreUserPo> storeUserQuery = new LambdaQueryWrapper<>();
+            storeUserQuery.eq(StoreUserPo::getUserId, userPo.getUserId());
+            storeUserQuery.eq(StoreUserPo::getStoreId, "402021121452660010");
+            storeUserQuery.eq(StoreUserPo::getStatusCd, "0");
+            if (storeUserMapper.selectCount(storeUserQuery) < 1){
+                StoreUserPo storeUserPo = new StoreUserPo();
+                storeUserPo.setStoreUserId(KeyUtils.genKey("45"));
+                storeUserPo.setUserId(userPo.getUserId());
+                storeUserPo.setBId("-8");
+                storeUserPo.setStoreId("402021121452660010");
+                storeUserPo.setFlag("2");
+                storeUserPo.setCreateTime(new Date());
+                storeUserPo.setRelCd("600311000002");
+                storeUserPo.setStatusCd("0");
+                storeUserMapper.insert(storeUserPo);
+            }
+            //普通用户权限
+            LambdaQueryWrapper<PrivilegeUserPo> privilegeUserQuery = new LambdaQueryWrapper<>();
+            privilegeUserQuery.eq(PrivilegeUserPo::getUserId, userPo.getUserId());
+            privilegeUserQuery.eq(PrivilegeUserPo::getStoreId, "402021121452660010");
+            privilegeUserQuery.eq(PrivilegeUserPo::getStatusCd, "0");
+            privilegeUserQuery.eq(PrivilegeUserPo::getPId, "6002022010746310005");
+            if (privilegeUserMapper.selectCount(privilegeUserQuery) < 1){
+                PrivilegeUserPo privilegeUserPo = new PrivilegeUserPo();
+                privilegeUserPo.setUserId(userPo.getUserId());
+                privilegeUserPo.setPId("6002022010746310005");
+                privilegeUserPo.setStoreId("402021121452660010");
+                privilegeUserPo.setPrivilege_flag("1");
+                privilegeUserPo.setCreateTime(new Date());
+                privilegeUserPo.setStatusCd("0");
+                privilegeUserMapper.insert(privilegeUserPo);
+            }
         }
 
         //不存在用户体系且非手动新增的用户
@@ -532,6 +610,80 @@ public class SyncDataServiceImpl implements ISyncDataService {
             orgStaffRelMapper.update(orgStaffRelUpdatePo, orgStaffRelUpdateQuery);
         }
 
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void writeToAttendanceSys() {
+        List<OrgStaffRelExcel> excels =orgStaffRelMapper.selectExportSourceData();
+        for (OrgStaffRelExcel item: excels){
+            //先以SourceUserId匹配
+            SysUserPo sysUserPo = attendanceSysService.getSysUserBySourceUserId(item.getSourceUserId());
+            if (Objects.isNull(sysUserPo)){
+                //SourceUserId匹配不上使用realname匹配
+                List<SysUserPo> sysUserPos = attendanceSysService.getSysUserByRealname(item.getUserName());
+                //如果名字只有一个用户则直接命中
+                if (sysUserPos.size() == 1){
+                    sysUserPo = sysUserPos.get(0);
+                }else {
+                    //如果多个则使用手机号再匹配一次
+                    for (SysUserPo userItem: sysUserPos) {
+                        if (StringUtils.equals(userItem.getPhone(), item.getTel())){
+                            sysUserPo = userItem;
+                            break;
+                        }
+                    }
+                }
+            }
+            //如果匹配不上用户则跳出
+            if (Objects.isNull(sysUserPo)){
+                continue;
+            }
+            //更新用户SourceUserId，后续可直接使用SourceUserId
+            sysUserPo.setSourceUserId(item.getSourceUserId());
+            sysUserPo.setSyncTime(new Date());
+            attendanceSysService.updateSysUserById(sysUserPo);
+
+            //根据用户id查询科室
+            List<SysUserDepartVo> sysUserDepartVos = attendanceSysService.getUserDepartByUserId(sysUserPo.getId());
+            if (CollectionUtils.isEmpty(sysUserDepartVos)){
+                SysDepartPo sysDepartPo = attendanceSysService.getDepartIdByName(item.getOrgName());
+                if (Objects.isNull(sysDepartPo)){
+                    throw new BusinessException("500",sysDepartPo.getDepartName()+"，科室找不到");
+                }else {
+                    //插入用户科室
+                    SysUserDepartPo sysUserDepartPo = new SysUserDepartPo();
+                    sysUserDepartPo.setId(UuidUtil.get32UUID());
+                    sysUserDepartPo.setUserId(sysUserPo.getId());
+                    sysUserDepartPo.setDepId(sysDepartPo.getId());
+                    attendanceSysService.insertUserDepart(sysUserDepartPo);
+                }
+            }else {
+                boolean existsDepart = false;
+                for (SysUserDepartVo userDepartVo: sysUserDepartVos){
+                    //用户部门名称不同的删除
+                    if (!StringUtils.equals(userDepartVo.getDepartName(), item.getOrgName())){
+                        attendanceSysService.deleteSysDepartById(userDepartVo.getUserDepartId());
+                    }else {
+                        existsDepart = true;
+                    }
+                }
+                //如果用户科室不存在则插入
+                if (!existsDepart){
+                    SysDepartPo sysDepartPo = attendanceSysService.getDepartIdByName(item.getOrgName());
+                    if (Objects.isNull(sysDepartPo)){
+                        throw new BusinessException("500",sysDepartPo.getDepartName()+"，科室找不到");
+                    }else {
+                        //插入用户科室
+                        SysUserDepartPo sysUserDepartPo = new SysUserDepartPo();
+                        sysUserDepartPo.setId(UuidUtil.get32UUID());
+                        sysUserDepartPo.setUserId(sysUserPo.getId());
+                        sysUserDepartPo.setDepId(sysDepartPo.getId());
+                        attendanceSysService.insertUserDepart(sysUserDepartPo);
+                    }
+                }
+            }
+        }
     }
 
 

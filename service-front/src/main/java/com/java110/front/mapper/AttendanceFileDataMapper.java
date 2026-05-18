@@ -3,8 +3,10 @@ package com.java110.front.mapper;
 import com.java110.entity.attendance.ImportOverTime;
 import com.java110.entity.attendance.ImportRest;
 import com.java110.entity.attendance.ImportVacation;
+import com.java110.po.attendanceException.AttendanceExceptionDataPo;
 import com.java110.po.attendanceFile.AttendanceFilePo;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -38,5 +40,7 @@ public interface AttendanceFileDataMapper {
      * @param cachedOverTimeDataList 数据列表
      */
     void saveOverTimeBatch(List<ImportOverTime> cachedOverTimeDataList);
+
+    List<AttendanceExceptionDataPo> selectDataByActStartAndEndDate(LocalDate vacationActStartDate, LocalDate vacationActEndDate);
 
 }

@@ -39,22 +39,22 @@ public class AttendanceRecordInnerServiceSMOImpl extends BaseServiceSMO implemen
             attendanceRecordDto.setPage((page - 1) * attendanceRecordDto.getRow());
         }
         List<ApiAttendanceRecordDataVo> apiAttendanceRecordDataVos = attendanceRecordServiceDaoImpl.queryAttendanceRecords(attendanceRecordDto);
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_B);
-        for (ApiAttendanceRecordDataVo apiAttendanceRecordDataVo : apiAttendanceRecordDataVos) {
-            String attendanceDateStr = apiAttendanceRecordDataVo.getAttendanceDate();
-            LocalDate attendanceDate = LocalDate.parse(attendanceDateStr, dateFormatter);
-            int week = attendanceDate.getDayOfWeek().getValue();
-            switch (week){
-                case 1:
-                case 2:
-                case 3:
-                case 4:
-                case 5: apiAttendanceRecordDataVo.setIsWorkingDay(1);break;
-                case 6:
-                case 7: apiAttendanceRecordDataVo.setIsWorkingDay(0);break;
-                default:
-            }
-        }
+//        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_B);
+//        for (ApiAttendanceRecordDataVo apiAttendanceRecordDataVo : apiAttendanceRecordDataVos) {
+//            String attendanceDateStr = apiAttendanceRecordDataVo.getAttendanceDate();
+//            LocalDate attendanceDate = LocalDate.parse(attendanceDateStr, dateFormatter);
+//            int week = attendanceDate.getDayOfWeek().getValue();
+//            switch (week){
+//                case 1:
+//                case 2:
+//                case 3:
+//                case 4:
+//                case 5: apiAttendanceRecordDataVo.setIsWorkingDay(1);break;
+//                case 6:
+//                case 7: apiAttendanceRecordDataVo.setIsWorkingDay(0);break;
+//                default:
+//            }
+//        }
         return apiAttendanceRecordDataVos;
     }
 }

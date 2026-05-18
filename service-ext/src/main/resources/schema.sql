@@ -1,38 +1,38 @@
-alter table u_user 
-add column source_user_id varchar(30)
-comment '数字化平台userid';
-alter table u_user 
-add column sync_date timestamp
-comment '同步时间';
 alter table u_user
-MODIFY column flag tinyint(4)
-comment '标记。1：数据来自政务微信；null则是系统自添加；2数字化平台';
+    add column source_user_id varchar(30)
+    comment '数字化平台userid';
+alter table u_user
+    add column sync_date timestamp
+    comment '同步时间';
+alter table u_user
+    MODIFY column flag tinyint(4)
+    comment '标记。1：数据来自政务微信；null则是系统自添加；2数字化平台';
 
-alter table u_org 
-add column source_org_id varchar(30)
-comment '数字化平台userid';
-alter table u_org 
-add column sync_time timestamp
-comment '同步时间';
 alter table u_org
-MODIFY column flag tinyint(4)
-comment '标记。1：数据来自政务微信；null则是系统自添加；2数字化平台';
+    add column source_org_id varchar(30)
+    comment '数字化平台userid';
+alter table u_org
+    add column sync_time timestamp
+    comment '同步时间';
+alter table u_org
+    MODIFY column flag tinyint(4)
+    comment '标记。1：数据来自政务微信；null则是系统自添加；2数字化平台';
 
 
-alter table u_org_staff_rel 
-add column sync_time timestamp
-comment '同步时间';
 alter table u_org_staff_rel
-MODIFY column flag tinyint(4)
-comment '标记。1：数据来自政务微信；null则是系统自添加；2数字化平台';
+    add column sync_time timestamp
+    comment '同步时间';
+alter table u_org_staff_rel
+    MODIFY column flag tinyint(4)
+    comment '标记。1：数据来自政务微信；null则是系统自添加；2数字化平台';
 
 
 alter table attendance_record
-add column repair_type tinyint(4)
+    add column repair_type tinyint(4)
 comment '见attendance_type';
 alter table attendance_record
-add column remark varchar(255)
-comment '说明，如果有假期调整';
+    add column remark varchar(255)
+    comment '说明，如果有假期调整';
 
 /*
  Navicat Premium Data Transfer
@@ -58,13 +58,13 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- ----------------------------
 DROP TABLE IF EXISTS `attendance_non_work_day`;
 CREATE TABLE `attendance_non_work_day`  (
-  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
-  `year_month` varchar(8) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '年月',
-  `start_date` date NULL DEFAULT NULL COMMENT '开始日期',
-  `end_date` date NULL DEFAULT NULL COMMENT '结束日期',
-  `create_time` timestamp(0) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(0) COMMENT '录入日期',
-  `holiday_flag` varchar(1) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT 'N普通休息日，Y是法定节假日',
-  PRIMARY KEY (`id`) USING BTREE
+                                            `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键id',
+                                            `year_month` varchar(8) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '年月',
+                                            `start_date` date NULL DEFAULT NULL COMMENT '开始日期',
+                                            `end_date` date NULL DEFAULT NULL COMMENT '结束日期',
+                                            `create_time` timestamp(0) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(0) COMMENT '录入日期',
+                                            `holiday_flag` varchar(1) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT 'N普通休息日，Y是法定节假日',
+                                            PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 860 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -421,13 +421,37 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- ----------------------------
 DROP TABLE IF EXISTS `attendance_exception_data_back`;
 CREATE TABLE `attendance_exception_data_back`  (
-  `id` varchar(30) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-  `attendance_date` datetime(0) NULL DEFAULT NULL COMMENT '考勤日期',
-  `actual_start_work_time` time(0) NULL DEFAULT NULL COMMENT '实际上班时间',
-  `actual_end_work_time` time(0) NULL DEFAULT NULL COMMENT '实际下班时间',
-  `type` tinyint(4) NULL DEFAULT NULL COMMENT '类型。1：正常，2：迟到，3：早退，4：旷工',
-  `exception_id` varchar(30) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT 'attendance_exception表对应的id',
-  `create_time` timestamp(0) NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'
+                                                   `id` varchar(30) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
+                                                   `attendance_date` datetime(0) NULL DEFAULT NULL COMMENT '考勤日期',
+                                                   `actual_start_work_time` time(0) NULL DEFAULT NULL COMMENT '实际上班时间',
+                                                   `actual_end_work_time` time(0) NULL DEFAULT NULL COMMENT '实际下班时间',
+                                                   `type` tinyint(4) NULL DEFAULT NULL COMMENT '类型。1：正常，2：迟到，3：早退，4：旷工',
+                                                   `exception_id` varchar(30) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT 'attendance_exception表对应的id',
+                                                   `create_time` timestamp(0) NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间'
 ) ENGINE = InnoDB CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+
+alter table sys_user
+    add column source_user_id varchar(50)
+    comment '数字化平台userid';
+alter table sys_user
+    add column sync_time datetime
+    comment '同步时间';
+
+SELECT gen_date
+FROM (
+         SELECT
+             DATE_ADD(@start_date, INTERVAL (a.n + b.n*10 + c.n*100 + d.n*1000) DAY) AS gen_date,
+             @start_date,
+             @end_date
+         FROM
+             (SELECT 0 AS n UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) a,
+             (SELECT 0 AS n UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) b,
+             (SELECT 0 AS n UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) c,
+             (SELECT 0 AS n UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) d,
+             (SELECT @start_date := '2020-01-01', @end_date := '2028-12-31') e
+     ) t
+WHERE gen_date <= @end_date
+ORDER BY gen_date;

@@ -58,4 +58,6 @@ public interface ISyncDataService {
      *         - errors: 错误列表
      */
     void importData(MultipartFile file) throws IOException;
+
+    void writeToAttendanceSys();
 }

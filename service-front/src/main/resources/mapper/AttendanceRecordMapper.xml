@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.java110.front.mapper.AttendanceRecordMapper">
+    <insert id="insertRecord">
+        insert into attendance_record(person_id, department, name, attendance_date, position, type, repair_type, remark, actual_start_work_time, actual_end_work_time)
+        values(#{attendanceRecord.personId}, #{attendanceRecord.department}, #{attendanceRecord.name},
+        #{attendanceRecord.attendanceDate}, #{attendanceRecord.position}, #{attendanceRecord.type},
+        #{attendanceRecord.repairType}, #{attendanceRecord.remark}, #{attendanceRecord.actualStartWorkTime}, #{attendanceRecord.actualEndWorkTime})
+    </insert>
+
+
+    <update id="updateRepairTypeByNameAndDepartAndDate">
+        update attendance_record set repair_type = #{repair_type} where name = #{name}
+        <if test="department != null and department != ''">
+            and department = #{department}
+        </if>
+        and attendance_date = #{attendanceDate}
+    </update>
+    <update id="updateRemarkByNameAndDepartAndDate">
+        update attendance_record set remark = #{remark} where name = #{name}
+        <if test="department != null and department != ''">
+            and department = #{department}
+        </if>
+        and attendance_date = #{attendanceDate}
+    </update>
+    <select id="getByNameAndDate" resultType="com.java110.dto.attendance.AttendanceRecordDto">
+        select department, name, attendance_date, position, type from attendance_record where name =#{name} and attendance_date = #{attendanceDate}
+    </select>
+    <select id="selectLatestByDepartmentAndNameAndDate" resultType="com.java110.po.attendance.AttendanceRecordPo">
+        select person_id personId, department, name, attendance_date attendanceDate, position, type from
+        attendance_record where name = #{name}
+        <if test="department != null and department != ''">
+            and department = #{department}
+        </if>
+        <if test="date != null">
+            and attendance_date = #{date}
+        </if>
+        order by attendance_date desc limit 1
+    </select>
+    <select id="getDateBeetStartAndEndDate" resultType="com.java110.po.attendance.SysAllDatePo">
+        select id, date_str dateStr from sys_all_date
+        where date_str >= #{startDate} and date_str &lt;= #{endDate} and date_str &lt; now() order by date_str
+    </select>
+    <select id="selectByDepartmentAndNameAndDate" resultType="com.java110.po.attendance.AttendanceRecordPo">
+        select person_id personId, department, actual_start_work_time actualStartWorkTime,
+        actual_end_work_time actualEndWorkTime, name, attendance_date attendanceDate, position, type,remark from
+        attendance_record where name = #{name}
+        <if test="department != null and department != ''">
+            and department = #{department}
+        </if>
+        <if test="date != null">
+            and attendance_date = #{date}
+        </if>
+    </select>
+</mapper>

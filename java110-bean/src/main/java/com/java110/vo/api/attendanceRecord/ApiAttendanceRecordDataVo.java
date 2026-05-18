@@ -22,6 +22,8 @@ public class ApiAttendanceRecordDataVo implements Serializable {
 
     private Integer type;
 
+    private String remark;
+
     public String getRecordId() {
         return recordId;
     }
@@ -92,5 +94,13 @@ public class ApiAttendanceRecordDataVo implements Serializable {
 
     public void setIsWorkingDay(Integer isWorkingDay) {
         this.isWorkingDay = isWorkingDay;
+    }
+
+    public String getRemark() {
+        return remark;
+    }
+
+    public void setRemark(String remark) {
+        this.remark = remark;
     }
 }

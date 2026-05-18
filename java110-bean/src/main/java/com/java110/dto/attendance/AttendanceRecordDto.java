@@ -23,6 +23,8 @@ public class AttendanceRecordDto extends PageDto implements Serializable {
     private String fixedStartWorkTime;
     private String fixedEndWorkTime;
 
+    private Integer workday;
+
     private List<String> userNameList;
 
     public List<String> getUserNameList() {
@@ -95,5 +97,13 @@ public class AttendanceRecordDto extends PageDto implements Serializable {
 
     public void setFixedEndWorkTime(String fixedEndWorkTime) {
         this.fixedEndWorkTime = fixedEndWorkTime;
+    }
+
+    public Integer getWorkday() {
+        return workday;
+    }
+
+    public void setWorkday(Integer workday) {
+        this.workday = workday;
     }
 }

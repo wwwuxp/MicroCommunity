@@ -62,48 +62,51 @@
             <result property="actualStartWorkTime" column="actualStartWorkTime"/>
             <result property="actualEndWorkTime" column="actualEndWorkTime"/>
             <result property="type" column="type"/>
+            <result property="isWorkingDay" column="isWorkingDay"/>
         </collection>
     </resultMap>
     <select id="listAttendanceExceptions" parameterType="com.java110.dto.attendance.AttendanceExceptionDto" resultMap="attendanceExceptions">
         SELECT ae.exception_id id, ae.department, ae.position, ae.`name`, DATE_FORMAT(ae.attendance_month, '%Y年%c月') attendanceMonth, ae.is_verify isVerify,
-               aed.id exceptionDataId, aed.attendance_date attendanceDate, aed.type,
-               DATE_FORMAT(aed.actual_start_work_time, '%H:%i') actualStartWorkTime,
-               DATE_FORMAT(aed.actual_end_work_time, '%H:%i') actualEndWorkTime
+        aed.id exceptionDataId, aed.attendance_date attendanceDate, aed.type,
+        DATE_FORMAT(aed.actual_start_work_time, '%H:%i') actualStartWorkTime,
+        DATE_FORMAT(aed.actual_end_work_time, '%H:%i') actualEndWorkTime,
+        (case when d.id is null then 1 else 0 end) as isWorkingDay
         FROM attendance_exception ae
         LEFT JOIN attendance_exception_data aed ON aed.exception_id = ae.exception_id
+        left join attendance_non_work_day d on aed.attendance_date BETWEEN d.start_date and d.end_date
         WHERE ae.id IN (
-            SELECT temp.id
-            FROM (
-                SELECT ae.exception_id id
-                FROM attendance_exception ae
-                LEFT JOIN attendance_exception_data aed ON aed.exception_id = ae.exception_id
-                <where>
-                    aed.attendance_date IS NOT NULL
-                    <if test="range != null and range.size > 0">
-                        AND ae.attendance_month IN
-                        <foreach collection="range" item="item" open="(" close=")" separator=",">
-                            #{item}
-                        </foreach>
-                    </if>
-                    <if test="position != null and position != ''">
-                        AND ae.position LIKE concat('%',#{position},'%')
-                    </if>
-                    <if test="department != null and department != ''">
-                        AND ae.department LIKE concat('%',#{department},'%')
-                    </if>
-                    <if test="name != null and name != ''">
-                        AND ae.`name` LIKE concat('%',#{name},'%')
-                    </if>
-                    <if test="isVerify != null">
-                        AND ae.is_verify = #{isVerify}
-                    </if>
-                </where>
-                GROUP BY ae.exception_id
-                ORDER BY ae.attendance_month DESC, ae.exception_id
-                <if test="page != -1 and page != null ">
-                    limit #{page}, #{row}
-                </if>
-            ) AS temp
+        SELECT temp.id
+        FROM (
+        SELECT ae.exception_id id
+        FROM attendance_exception ae
+        LEFT JOIN attendance_exception_data aed ON aed.exception_id = ae.exception_id
+        <where>
+            aed.attendance_date IS NOT NULL
+            <if test="range != null and range.size > 0">
+                AND ae.attendance_month IN
+                <foreach collection="range" item="item" open="(" close=")" separator=",">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="position != null and position != ''">
+                AND ae.position LIKE concat('%',#{position},'%')
+            </if>
+            <if test="department != null and department != ''">
+                AND ae.department LIKE concat('%',#{department},'%')
+            </if>
+            <if test="name != null and name != ''">
+                AND ae.`name` LIKE concat('%',#{name},'%')
+            </if>
+            <if test="isVerify != null">
+                AND ae.is_verify = #{isVerify}
+            </if>
+        </where>
+        GROUP BY ae.exception_id
+        ORDER BY ae.attendance_month DESC, ae.exception_id
+        <if test="page != -1 and page != null ">
+            limit #{page}, #{row}
+        </if>
+        ) AS temp
         )
     </select>
 

@@ -65,7 +65,8 @@
         LEFT JOIN u_org_staff_rel r ON r.staff_id = uu.user_id
         LEFT JOIN u_org uo ON uo.org_id = r.org_id
         LEFT JOIN t_dict d ON d.status_cd = r.rel_cd
-        WHERE d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd' AND pcu.status_cd = '0' AND uu.level_cd = '01'
+        WHERE d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd' AND pcu.status_cd = '0'
+        AND uu.level_cd = '01' and r.status_cd = '0'
         AND pcu.is_self_driving = '0'
         AND pcu.user_id NOT IN (
             SELECT t.user_id
@@ -103,7 +104,8 @@
         LEFT JOIN u_org_staff_rel r ON r.staff_id = uu.user_id
         LEFT JOIN u_org uo ON uo.org_id = r.org_id
         LEFT JOIN t_dict d ON d.status_cd = r.rel_cd
-        WHERE d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd' AND pcu.status_cd = '0' AND uu.level_cd = '01'
+        WHERE d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd' AND pcu.status_cd = '0'
+        AND uu.level_cd = '01' and r.status_cd = '0'
         AND pcu.is_self_driving = '0'
         AND pcu.user_id NOT IN (
             SELECT t.user_id
@@ -367,7 +369,8 @@
         LEFT JOIN u_org_staff_rel r ON r.staff_id = uu.user_id
         LEFT JOIN u_org uo ON uo.org_id = r.org_id
         LEFT JOIN t_dict d ON d.status_cd = r.rel_cd
-        WHERE d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd' AND uu.status_cd = '0' AND uu.level_cd = '01'
+        WHERE d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd' AND uu.status_cd = '0'
+        AND uu.level_cd = '01' AND r.status_cd = '0'
         <if test="currentUserId != null and currentUserId != ''">
             and uu.user_id = #{currentUserId}
         </if>
@@ -394,7 +397,8 @@
         LEFT JOIN u_org_staff_rel r ON r.staff_id = uu.user_id
         LEFT JOIN u_org uo ON uo.org_id = r.org_id
         LEFT JOIN t_dict d ON d.status_cd = r.rel_cd
-        WHERE d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd' AND uu.status_cd = '0' AND uu.level_cd = '01'
+        WHERE d.table_name = 'u_org_staff_rel' AND d.table_columns = 'rel_cd' AND uu.status_cd = '0'
+        AND uu.level_cd = '01' AND r.status_cd = '0'
         <if test="currentUserId != null and currentUserId != ''">
             and uu.user_id = #{currentUserId}
         </if>

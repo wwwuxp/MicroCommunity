@@ -66,25 +66,25 @@ public class AttendanceExceptionInnerServiceSMOImpl extends BaseServiceSMO imple
             attendanceExceptionDto.setPage((page - 1) * attendanceExceptionDto.getRow());
         }
         List<ApiAttendanceExceptionDataVo> apiAttendanceExceptionDataVos = attendanceExceptionServiceDaoImpl.listAttendanceExceptions(attendanceExceptionDto);
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_B);
-        for (ApiAttendanceExceptionDataVo apiAttendanceExceptionDataVo : apiAttendanceExceptionDataVos) {
-            List<AttendanceExceptionDetail> exceptionDatas = apiAttendanceExceptionDataVo.getExceptionData();
-            for (AttendanceExceptionDetail exceptionData : exceptionDatas) {
-                String attendanceDateStr = exceptionData.getAttendanceDate();
-                LocalDate attendanceDate = LocalDate.parse(attendanceDateStr, dateFormatter);
-                int week = attendanceDate.getDayOfWeek().getValue();
-                switch (week){
-                    case 1:
-                    case 2:
-                    case 3:
-                    case 4:
-                    case 5: exceptionData.setIsWorkingDay(1);break;
-                    case 6:
-                    case 7: exceptionData.setIsWorkingDay(0);break;
-                    default:
-                }
-            }
-        }
+//        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_B);
+//        for (ApiAttendanceExceptionDataVo apiAttendanceExceptionDataVo : apiAttendanceExceptionDataVos) {
+//            List<AttendanceExceptionDetail> exceptionDatas = apiAttendanceExceptionDataVo.getExceptionData();
+//            for (AttendanceExceptionDetail exceptionData : exceptionDatas) {
+//                String attendanceDateStr = exceptionData.getAttendanceDate();
+//                LocalDate attendanceDate = LocalDate.parse(attendanceDateStr, dateFormatter);
+//                int week = attendanceDate.getDayOfWeek().getValue();
+//                switch (week){
+//                    case 1:
+//                    case 2:
+//                    case 3:
+//                    case 4:
+//                    case 5: exceptionData.setIsWorkingDay(1);break;
+//                    case 6:
+//                    case 7: exceptionData.setIsWorkingDay(0);break;
+//                    default:
+//                }
+//            }
+//        }
         return apiAttendanceExceptionDataVos;
     }
 
