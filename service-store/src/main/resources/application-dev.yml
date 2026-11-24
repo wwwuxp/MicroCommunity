@@ -7,7 +7,7 @@ jedis:
     host: dev.redis.java110.com
     port: 6379
     timeout: 3000
-    password: @service.jedis.pwd@
+    password:
 
 eureka:
   instance:
@@ -36,7 +36,7 @@ spring:
     database: 0
     host: dev.redis.java110.com
     port: 6379
-    password: @service.redis.pwd@
+    password:
     pool:
       max-active: 300
       max-wait: 10000
@@ -52,9 +52,12 @@ spring:
     filters: stat,wall,log4j
     poolPreparedStatements: true
     type: com.alibaba.druid.pool.DruidDataSource
-    url: jdbc:mysql://dev.db.java110.com:3306/TT?useUnicode=true&characterEncoding=utf-8
+    username: root
+    password: 123456
+    url: jdbc:mysql://dev.db.java110.com:3306/tt?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    #    url: jdbc:mysql://dev.db.java110.com:3306/TT?useUnicode=true&characterEncoding=utf-8
     maxPoolPreparedStatementPerConnectionSize: 20
-    password: @service.mysql.pwd@
+#    password: @service.mysql.pwd@
     testOnBorrow: false
     testWhileIdle: true
     minEvictableIdleTimeMillis: 300000
@@ -62,7 +65,7 @@ spring:
     testOnReturn: false
     driverClassName: com.mysql.cj.jdbc.Driver
     maxActive: 20
-    username: @service.mysql.uname@
+#    username: @service.mysql.uname@
 
 feign:
   client:
@@ -104,4 +107,4 @@ kafka:
       memory: 40960
 jasypt:
   encryptor:
-    password: @jasypt.pwd@
+    password: Ozsc/xsCeZlR9FL1i8nwTA==

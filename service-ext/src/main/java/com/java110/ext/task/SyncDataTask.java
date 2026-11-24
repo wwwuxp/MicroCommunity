@@ -74,4 +74,26 @@ public class SyncDataTask {
             }
         }
     }
+
+    /**
+     * 定时从visitor_db_guoshui同步部门、用户和部门关系数据到tt
+     * sys_depart → u_org，sys_user → u_user，sys_user_depart → u_org_staff_rel
+     * 默认每天凌晨4点执行
+     */
+    @Scheduled(cron = "${sync.task.visitor.cron:0 0 4 * * ?}")
+    public void syncFromVisitorDb() {
+        if (!syncTaskEnabled) {
+            logger.info("syncFromVisitorDb 定时同步任务未启用，跳过执行");
+            return;
+        }
+
+        if (syncTaskJyw) {
+            logger.info("【syncFromVisitorDb】开始从visitor_db_guoshui同步数据到tt");
+            try {
+                syncDataService.syncFromVisitorDb();
+            } catch (Exception e) {
+                logger.error("【syncFromVisitorDb】从visitor_db_guoshui同步数据失败", e);
+            }
+        }
+    }
 }

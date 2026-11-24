@@ -7,7 +7,7 @@ jedis:
     host: dev.redis.java110.com
     port: 6379
     timeout: 3000
-    password: @service.jedis.pwd@
+    password:
 
 eureka:
   instance:
@@ -35,10 +35,10 @@ spring:
   application:
     name: goods-service
   redis:
-    database: 4
+    database: 0
     host: dev.redis.java110.com
     port: 6379
-    password: @service.redis.pwd@
+    password:
     pool:
       max-active: 300
       max-wait: 10000
@@ -85,4 +85,4 @@ kafka:
       memory: 40960
 jasypt:
   encryptor:
-    password: @jasypt.pwd@
+    password: Ozsc/xsCeZlR9FL1i8nwTA==

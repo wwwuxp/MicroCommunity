@@ -10,7 +10,7 @@ jedis:
     host: prod.redis.java110.com
     port: 6379
     timeout: 3000
-    password: @service.jedis.pwd@
+    password: ENC(Zjk+ejfSAAbZB0QHyzbEcg8tFFMkYHXc)
 
 eureka:
   instance:
@@ -20,7 +20,7 @@ eureka:
     instanceId: ${spring.cloud.client.ip-address}:${server.port}
   client:
     serviceUrl:
-      defaultZone: http://prod.java110.com:8761/eureka/
+      defaultZone: http://admin:T6HBoWreiTUR@dev.java110.com:8761/eureka/
       #defaultZone: http://localhost:8761/eureka/
 server:
   port: 8012
@@ -48,6 +48,7 @@ spring:
       max-idle: 100
       min-idle: 0
       timeout: 0
+    password: ENC(Zjk+ejfSAAbZB0QHyzbEcg8tFFMkYHXc)
 
   thymeleaf:
     mode: LEGACYHTML5
@@ -56,6 +57,20 @@ spring:
     encoding: UTF-8
     suffix: .html
     content-type: text/html
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: tt
+    password: ENC(vBLaWJvB++rI9f1s65vYTsNAto+vQzou)
+    url: jdbc:mysql://prod.db.java110.com:3306/tt?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      initial-size: 3
+      min-idle: 3
+      max-active: 10
+      max-wait: 60000
+      validation-query: SELECT 1 FROM DUAL
+      filters: stat,wall,log4j
+      pool-prepared-statements: true
 
 #============== kafka ===================
 kafka:
@@ -90,5 +105,13 @@ kafka:
       memory: 40960
 jasypt:
   encryptor:
-    password: @jasypt.pwd@
+    password: Ozsc/xsCeZlR9FL1i8nwTA==
 
+ftp:
+  ftpIp: 192.168.0.181
+  ftpUser: hcftp
+  ftpPwd: ENC(Vzrtug7/GY4BMzsnFpbqCQya2aS2j8Lk)
+  ftpPort: 6069
+
+mybatis:
+  mapper-locations: classpath*:/mapper/*.xml

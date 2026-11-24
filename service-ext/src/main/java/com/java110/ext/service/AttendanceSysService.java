@@ -21,4 +21,14 @@ public interface AttendanceSysService {
     void insertUserDepart(SysUserDepartPo sysUserDepartPo);
 
     void deleteSysDepartById(String userDepartId);
+
+    /**
+     * 获取visitor_db_guoshui中所有活跃用户
+     */
+    List<SysUserPo> getAllActiveSysUsers();
+
+    /**
+     * 获取visitor_db_guoshui中所有未删除的部门
+     */
+    List<SysDepartPo> getAllActiveDeparts();
 }

@@ -44,4 +44,5 @@ public class UserPo implements Serializable {
     private Date createTime;
 
     private String flag;
+    private String personId;
 }

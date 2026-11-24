@@ -38,22 +38,22 @@ public class ConstantUtil {
     /**
      * 上班异常临界时间
      */
-    public static final String FIXED_START_TIME = "09:05:59";
+    public static final String FIXED_START_TIME = "09:00:59";
 
     /**
      * 下班异常临界时间
      */
-    public static final String FIXED_END_TIME = "17:55:00";
+    public static final String FIXED_END_TIME = "18:00:00";
 
     /**
      * 上午下班异常临界时间
      */
-    public static final String MORNING_FIXED_END_TIME = "11:55:00";
+    public static final String MORNING_FIXED_END_TIME = "12:00:00";
 
     /**
      * 下午上班异常临界时间
      */
-    public static final String NOON_FIXED_START_TIME = "14:05:59";
+    public static final String NOON_FIXED_START_TIME = "14:00:59";
 
     /**
      * 经纬度正则表达式

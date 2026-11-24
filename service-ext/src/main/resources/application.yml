@@ -5,6 +5,8 @@ server:
 spring:
   profiles:
    active: dev
+  application:
+    name: ext-service
 
 
 # MyBatis-Plus 配置

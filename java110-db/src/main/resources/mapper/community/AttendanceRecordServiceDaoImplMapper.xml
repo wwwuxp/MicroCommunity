@@ -6,63 +6,58 @@
 
     <!-- 查询考勤记录 record_id recordId, -->
     <select id="queryAttendanceRecords" parameterType="com.java110.dto.attendance.AttendanceRecordDto" resultType="com.java110.vo.api.attendanceRecord.ApiAttendanceRecordDataVo">
-        SELECT distinct u.department, u.`position`, u.name, date_str attendanceDate,
-        DATE_FORMAT(actual_start_work_time, '%H:%i') actualStartWorkTime,
-        DATE_FORMAT(actual_end_work_time, '%H:%i') actualEndWorkTime,
-        case when repair_type is not null then repair_type else case when `type` is null then 4 else `type` end end type,
-        remark, (case when b.id is null then 1 else 0 end) as isWorkingDay,
-        a.attendance_date, u.person_id
+        SELECT distinct uu.department, uu.position_name as `position`, uu.user_name as name, d.date_str attendanceDate,
+        DATE_FORMAT(a.actual_start_work_time, '%H:%i') actualStartWorkTime,
+        DATE_FORMAT(a.actual_end_work_time, '%H:%i') actualEndWorkTime,
+        case when a.repair_type is not null then a.repair_type else case when a.`type` is null then 4 else a.`type` end end type,
+        a.remark, (case when b.id is null then 1 else 0 end) as isWorkingDay,
+        a.attendance_date, uu.person_id
         FROM sys_all_date d
-        join (select DISTINCT name,
-        SUBSTRING_INDEX(GROUP_CONCAT(department ORDER BY CASE WHEN position IS NOT NULL AND position != '' THEN 0 ELSE 1 END), ',', 1) AS department,
-        SUBSTRING_INDEX(GROUP_CONCAT(position ORDER BY CASE WHEN position IS NOT NULL AND position != '' THEN 0 ELSE 1 END), ',', 1) AS position,
-        person_id
-        from attendance_record where 1=1
+        join (select us.name as user_name, o.org_name as department, dd.name as position_name, us.person_id from u_user us
+        left join u_org_staff_rel r on us.user_id = r.staff_id
+        left join u_org o on r.org_id = o.org_id
+        left join t_dict dd on dd.status_cd = r.rel_cd and dd.table_name = 'u_org_staff_rel' and dd.table_columns = 'rel_cd'
+        where us.status_cd = '0'
+        and r.status_cd = '0'
+        and o.org_id in ('1399','1400','1401','1402','1403','1404','1405','1406','1407','1408','1409','1410','1411','842026051862340001','842026092970420003','842026092981930004','842026092990810005','842026092993470002','842026092998960006')
         <if test="department != null and department != ''">
-            and department LIKE concat('%',#{department},'%')
+            and o.org_name LIKE concat('%',#{department},'%')
         </if>
         <if test="position != null and position != ''">
-            AND `position` LIKE concat('%',#{position},'%')
+            AND dd.name LIKE concat('%',#{position},'%')
         </if>
         <if test="name != null and name != ''">
-            AND `name` LIKE concat('%',#{name},'%')
-        </if>
-        <if test="fixedStartWorkTime != null and fixedEndWorkTime != null">
-            AND (actual_start_work_time IS NULL OR actual_end_work_time IS NULL OR actual_start_work_time > #{fixedStartWorkTime} OR <![CDATA[actual_end_work_time < #{fixedEndWorkTime}]]>)
-        </if>
-        <if test="userNameList != null">
-            AND name in
-            <foreach collection="userNameList" item="name" open="(" separator="," close=")">
-                #{name}
-            </foreach>
-        </if>
+            AND us.name LIKE concat('%',#{name},'%')
+        </if>) uu
+        left join (select min(actual_start_work_time) actual_start_work_time, max(actual_end_work_time) actual_end_work_time, person_id, name, department, position, attendance_date, type, repair_type, remark
+        from attendance_record where 1=1
         <if test="lessAttendanceDate != null and lessAttendanceDate != ''">
             <![CDATA[AND attendance_date >= #{lessAttendanceDate}]]>
         </if>
         <if test="moreAttendanceDate != null and moreAttendanceDate != ''">
             <![CDATA[AND attendance_date <= #{moreAttendanceDate}]]>
-        </if> group by name, person_id) u
-        left join attendance_record a on d.date_str = a.attendance_date and a.person_id = u.person_id
+        </if>
+        group by attendance_date, person_id) a on d.date_str = a.attendance_date and a.person_id = uu.person_id
         <if test="department != null and department != ''">
-            and a.department LIKE concat('%',#{department},'%')
+            and uu.department LIKE concat('%',#{department},'%')
         </if>
         <if test="position != null and position != ''">
-            AND a.`position` LIKE concat('%',#{position},'%')
+            AND uu.position_name LIKE concat('%',#{position},'%')
         </if>
         <if test="name != null and name != ''">
-            AND a.`name` LIKE concat('%',#{name},'%')
+            AND uu.user_name LIKE concat('%',#{name},'%')
         </if>
         <if test="fixedStartWorkTime != null and fixedEndWorkTime != null">
             AND (a.actual_start_work_time IS NULL OR a.actual_end_work_time IS NULL OR a.actual_start_work_time > #{fixedStartWorkTime} OR <![CDATA[a.actual_end_work_time < #{fixedEndWorkTime}]]>)
         </if>
         <if test="userNameList != null">
-            AND a.name in
-            <foreach collection="userNameList" item="name" open="(" separator="," close=")">
-                #{name}
+            AND uu.user_name in
+            <foreach collection="userNameList" item="item" open="(" separator="," close=")">
+                #{item}
             </foreach>
         </if>
         left join attendance_non_work_day b on d.date_str BETWEEN b.start_date and b.end_date
-        where date_str &lt; now()
+        where d.date_str &lt; now()
         <choose>
             <when test="workday == null or workday == 0">
                 and (b.id is null or (b.id is not null and a.actual_start_work_time is not null))
@@ -75,23 +70,23 @@
             </when>
         </choose>
         <if test="lessAttendanceDate != null and lessAttendanceDate != ''">
-            <![CDATA[AND date_str >= #{lessAttendanceDate}]]>
+            <![CDATA[AND d.date_str >= #{lessAttendanceDate}]]>
         </if>
         <if test="moreAttendanceDate != null and moreAttendanceDate != ''">
-            <![CDATA[AND date_str <= #{moreAttendanceDate}]]>
+            <![CDATA[AND d.date_str <= #{moreAttendanceDate}]]>
         </if>
         <if test="type != null">
             <choose>
                 <when test="type == 4">
-                    AND ((case when repair_type is not null then repair_type =#{type} else `type` = #{type} end ) or a.attendance_date is null)
+                    AND ((case when a.repair_type is not null then a.repair_type =#{type} else a.`type` = #{type} end ) or a.attendance_date is null)
                 </when>
                 <otherwise>
-                    AND (case when repair_type is not null then repair_type =#{type} else `type` = #{type} end)
+                    AND (case when a.repair_type is not null then a.repair_type =#{type} else a.`type` = #{type} end)
                 </otherwise>
             </choose>
         </if>
 
-        ORDER BY d.date_str DESC, u.person_id
+        ORDER BY d.date_str DESC, uu.person_id
         <if test="page != -1 and page != null ">
             limit #{page}, #{row}
         </if>
@@ -99,80 +94,54 @@
 
     <!-- 查询考勤记录数量 -->
     <select id="queryAttendanceRecordsCount" parameterType="com.java110.dto.attendance.AttendanceRecordDto" resultType="int">
-<!--        SELECT COUNT(1) count-->
-<!--        FROM attendance_record-->
-<!--        <where>-->
-<!--            <if test="department != null and department != ''">-->
-<!--                department LIKE concat('%',#{department},'%')-->
-<!--            </if>-->
-<!--            <if test="position != null and position != ''">-->
-<!--                AND `position` LIKE concat('%',#{position},'%')-->
-<!--            </if>-->
-<!--            <if test="name != null and name != ''">-->
-<!--                AND `name` LIKE concat('%',#{name},'%')-->
-<!--            </if>-->
-<!--            <if test="type != null">-->
-<!--                AND `type` = #{type}-->
-<!--            </if>-->
-<!--            <if test="lessAttendanceDate != null and lessAttendanceDate != ''">-->
-<!--                <![CDATA[AND attendance_date >= #{lessAttendanceDate}]]>-->
-<!--            </if>-->
-<!--            <if test="moreAttendanceDate != null and moreAttendanceDate != ''">-->
-<!--                <![CDATA[AND attendance_date <= #{moreAttendanceDate}]]>-->
-<!--            </if>-->
-<!--        </where>-->
         SELECT count(1)
         FROM sys_all_date d
-        join (select DISTINCT name,
-        SUBSTRING_INDEX(GROUP_CONCAT(department ORDER BY CASE WHEN position IS NOT NULL AND position != '' THEN 0 ELSE 1 END), ',', 1) AS department,
-        SUBSTRING_INDEX(GROUP_CONCAT(position ORDER BY CASE WHEN position IS NOT NULL AND position != '' THEN 0 ELSE 1 END), ',', 1) AS position,
-        person_id
+        join (
+            select us.name as user_name, o.org_name as department, dd.name as position_name, us.person_id from u_user us
+            left join u_org_staff_rel r on us.user_id = r.staff_id
+            left join u_org o on r.org_id = o.org_id
+            left join t_dict dd on dd.status_cd = r.rel_cd and dd.table_name = 'u_org_staff_rel' and dd.table_columns = 'rel_cd'
+            where us.status_cd = '0'
+            and r.status_cd = '0'
+            and o.org_id in ('1399','1400','1401','1402','1403','1404','1405','1406','1407','1408','1409','1410','1411','842026051862340001','842026092970420003','842026092981930004','842026092990810005','842026092993470002','842026092998960006')
+            <if test="department != null and department != ''">
+                and o.org_name LIKE concat('%',#{department},'%')
+            </if>
+            <if test="position != null and position != ''">
+                AND dd.name LIKE concat('%',#{position},'%')
+            </if>
+            <if test="name != null and name != ''">
+                AND us.name LIKE concat('%',#{name},'%')
+            </if>) uu
+        left join (select min(actual_start_work_time) actual_start_work_time, max(actual_end_work_time) actual_end_work_time, person_id, name, department, position, attendance_date, type, repair_type, remark
         from attendance_record where 1=1
-        <if test="department != null and department != ''">
-            and department LIKE concat('%',#{department},'%')
-        </if>
-        <if test="position != null and position != ''">
-            AND `position` LIKE concat('%',#{position},'%')
-        </if>
-        <if test="name != null and name != ''">
-            AND `name` LIKE concat('%',#{name},'%')
-        </if>
-        <if test="fixedStartWorkTime != null and fixedEndWorkTime != null">
-            AND (actual_start_work_time IS NULL OR actual_end_work_time IS NULL OR actual_start_work_time > #{fixedStartWorkTime} OR <![CDATA[actual_end_work_time < #{fixedEndWorkTime}]]>)
-        </if>
-        <if test="userNameList != null">
-            AND name in
-            <foreach collection="userNameList" item="name" open="(" separator="," close=")">
-                #{name}
-            </foreach>
-        </if>
         <if test="lessAttendanceDate != null and lessAttendanceDate != ''">
             <![CDATA[AND attendance_date >= #{lessAttendanceDate}]]>
         </if>
         <if test="moreAttendanceDate != null and moreAttendanceDate != ''">
             <![CDATA[AND attendance_date <= #{moreAttendanceDate}]]>
-        </if> group by name, person_id) u
-        left join attendance_record a on d.date_str = a.attendance_date and a.person_id = u.person_id
+        </if>
+        group by attendance_date, person_id) a on d.date_str = a.attendance_date and a.person_id = uu.person_id
         <if test="department != null and department != ''">
-            and a.department LIKE concat('%',#{department},'%')
+            and uu.department LIKE concat('%',#{department},'%')
         </if>
         <if test="position != null and position != ''">
-            AND a.`position` LIKE concat('%',#{position},'%')
+            AND uu.position_name LIKE concat('%',#{position},'%')
         </if>
         <if test="name != null and name != ''">
-            AND a.`name` LIKE concat('%',#{name},'%')
+            AND uu.user_name LIKE concat('%',#{name},'%')
         </if>
         <if test="fixedStartWorkTime != null and fixedEndWorkTime != null">
             AND (a.actual_start_work_time IS NULL OR a.actual_end_work_time IS NULL OR a.actual_start_work_time > #{fixedStartWorkTime} OR <![CDATA[a.actual_end_work_time < #{fixedEndWorkTime}]]>)
         </if>
         <if test="userNameList != null">
-            AND a.name in
-            <foreach collection="userNameList" item="name" open="(" separator="," close=")">
-                #{name}
+            AND uu.user_name in
+            <foreach collection="userNameList" item="item" open="(" separator="," close=")">
+                #{item}
             </foreach>
         </if>
         left join attendance_non_work_day b on d.date_str BETWEEN b.start_date and b.end_date
-        where date_str &lt; now()
+        where d.date_str &lt; now()
         <choose>
             <when test="workday == null or workday == 0">
                 and (b.id is null or (b.id is not null and a.actual_start_work_time is not null))
@@ -185,18 +154,18 @@
             </when>
         </choose>
         <if test="lessAttendanceDate != null and lessAttendanceDate != ''">
-            <![CDATA[AND date_str >= #{lessAttendanceDate}]]>
+            <![CDATA[AND d.date_str >= #{lessAttendanceDate}]]>
         </if>
         <if test="moreAttendanceDate != null and moreAttendanceDate != ''">
-            <![CDATA[AND date_str <= #{moreAttendanceDate}]]>
+            <![CDATA[AND d.date_str <= #{moreAttendanceDate}]]>
         </if>
         <if test="type != null">
             <choose>
                 <when test="type == 4">
-                    AND (case when repair_type is not null then repair_type =#{type} else `type` = #{type} end or a.attendance_date is null)
+                    AND (case when a.repair_type is not null then a.repair_type =#{type} else a.`type` = #{type} end or a.attendance_date is null)
                 </when>
                 <otherwise>
-                    AND (case when repair_type is not null then repair_type =#{type} else `type` = #{type} end)
+                    AND (case when a.repair_type is not null then a.repair_type =#{type} else a.`type` = #{type} end)
                 </otherwise>
             </choose>
         </if>

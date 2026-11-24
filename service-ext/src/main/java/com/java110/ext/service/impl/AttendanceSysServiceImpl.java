@@ -80,4 +80,21 @@ public class AttendanceSysServiceImpl implements AttendanceSysService {
     public void deleteSysDepartById(String userDepartId) {
         sysUserDepartMapper.deleteById(userDepartId);
     }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public List<SysUserPo> getAllActiveSysUsers() {
+        LambdaQueryWrapper<SysUserPo> query = new LambdaQueryWrapper<>();
+        query.eq(SysUserPo::getDelFlag, 0);
+        return sysUserMapper.selectList(query);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public List<SysDepartPo> getAllActiveDeparts() {
+        LambdaQueryWrapper<SysDepartPo> query = new LambdaQueryWrapper<>();
+        query.eq(SysDepartPo::getDelFlag, "0");
+        query.eq(SysDepartPo::getDeptId, "639a1f455037e4382be6790e969c39e3");
+        return departMaoper.selectList(query);
+    }
 }

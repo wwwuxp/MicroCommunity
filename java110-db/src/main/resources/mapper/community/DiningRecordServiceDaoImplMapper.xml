@@ -17,9 +17,10 @@
     <select id="queryDiningRecordStatisticsCount" parameterType="com.java110.dto.diningRecord.DiningRecordDto" resultType="int">
         SELECT COUNT(*) count
         FROM (
-            SELECT DISTINCT person_id personId, `name`, department, position
+            SELECT person_id personId, MAX(`name`) AS `name`, MAX(department) AS department, MAX(position) AS position
             FROM dining_record
             WHERE identify_date BETWEEN #{startDate} AND #{endDate}
+            GROUP BY person_id
         ) a
         LEFT JOIN (
             SELECT person_id personId, COUNT(DISTINCT person_id, identify_date) aCount
@@ -44,13 +45,13 @@
         ) d ON a.personId = d.personId
         WHERE (b.aCount != 0 OR c.mCount != 0 OR d.pCount != 0)
         <if test="name != null and name != ''">
-            AND name LIKE concat('%', #{name}, '%')
+            AND a.name LIKE concat('%', #{name}, '%')
         </if>
         <if test="department != null and department != ''">
-            AND department LIKE concat('%', #{department}, '%')
+            AND a.department LIKE concat('%', #{department}, '%')
         </if>
         <if test="position != null and position != ''">
-            AND position LIKE concat('%', #{position}, '%')
+            AND a.position LIKE concat('%', #{position}, '%')
         </if>
     </select>
 
@@ -59,9 +60,10 @@
         SELECT a.personId, a.`name`, a.department, a.position,
         IFNULL(b.aCount,0) morning, IFNULL(c.mCount,0) noon, IFNULL(d.pCount,0) afternoon
         FROM (
-            SELECT DISTINCT person_id personId, `name`, department, position
+            SELECT person_id personId, MAX(`name`) AS `name`, MAX(department) AS department, MAX(position) AS position
             FROM dining_record
             WHERE identify_date BETWEEN #{startDate} AND #{endDate}
+            GROUP BY person_id
         ) a
         LEFT JOIN (
             SELECT person_id personId, COUNT(DISTINCT person_id, identify_date) aCount
@@ -86,13 +88,13 @@
         ) d ON a.personId = d.personId
         WHERE (b.aCount != 0 OR c.mCount != 0 OR d.pCount != 0)
         <if test="name != null and name != ''">
-            AND name LIKE concat('%', #{name}, '%')
+            AND a.name LIKE concat('%', #{name}, '%')
         </if>
         <if test="department != null and department != ''">
-            AND department LIKE concat('%', #{department}, '%')
+            AND a.department LIKE concat('%', #{department}, '%')
         </if>
         <if test="position != null and position != ''">
-            AND position LIKE concat('%', #{position}, '%')
+            AND a.position LIKE concat('%', #{position}, '%')
         </if>
         <if test="page != -1 and page != null ">
             limit #{page}, #{row}

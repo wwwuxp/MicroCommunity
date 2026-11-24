@@ -3,6 +3,7 @@ package com.java110.front.mapper;
 import com.java110.dto.attendance.AttendanceRecordDto;
 import com.java110.po.attendance.AttendanceRecordPo;
 import com.java110.po.attendance.SysAllDatePo;
+import com.java110.vo.api.attendanceRecord.ApiAttendanceRecordDataVo;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDate;
@@ -23,4 +24,5 @@ public interface AttendanceRecordMapper {
 
     List<AttendanceRecordPo> selectByDepartmentAndNameAndDate(@Param("department") String department, @Param("name") String name, @Param("date") LocalDate dateStr);
 
+    List<ApiAttendanceRecordDataVo> queryAttendanceRecords(@Param("dto") AttendanceRecordDto attendanceRecordDto);
 }

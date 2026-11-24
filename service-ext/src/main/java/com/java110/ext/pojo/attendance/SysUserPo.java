@@ -16,4 +16,5 @@ public class SysUserPo {
     private String phone;
     private Date syncTime;
     private Integer delFlag;
+    private String post;
 }

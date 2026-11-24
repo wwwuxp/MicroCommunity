@@ -7,7 +7,7 @@ jedis:
     host: prod.redis.java110.com
     port: 6379
     timeout: 3000
-    password: @service.jedis.pwd@
+    password: ENC(Zjk+ejfSAAbZB0QHyzbEcg8tFFMkYHXc)
 
 eureka:
   instance:
@@ -36,6 +36,7 @@ spring:
     database: 0
     host: prod.redis.java110.com
     port: 6379
+    password: ENC(Zjk+ejfSAAbZB0QHyzbEcg8tFFMkYHXc)
     pool:
       max-active: 300
       max-wait: 10000
@@ -51,9 +52,9 @@ spring:
     filters: stat,wall,log4j
     poolPreparedStatements: true
     type: com.alibaba.druid.pool.DruidDataSource
-    url: jdbc:mysql://prod.db.java110.com:3306/TT?useUnicode=true&characterEncoding=utf-8
+    url: jdbc:mysql://prod.db.java110.com:3306/tt?useUnicode=true&characterEncoding=utf-8
     maxPoolPreparedStatementPerConnectionSize: 20
-    password: @service.mysql.pwd@
+    password: ENC(vBLaWJvB++rI9f1s65vYTsNAto+vQzou)
     testOnBorrow: false
     testWhileIdle: true
     minEvictableIdleTimeMillis: 300000
@@ -61,7 +62,7 @@ spring:
     testOnReturn: false
     driverClassName: com.mysql.cj.jdbc.Driver
     maxActive: 20
-    username: @service.mysql.uname@
+    username: tt
 
 #============== kafka ===================
 kafka:
@@ -97,4 +98,4 @@ kafka:
 
 jasypt:
   encryptor:
-    password: @jasypt.pwd@
+    password: Ozsc/xsCeZlR9FL1i8nwTA==

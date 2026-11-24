@@ -640,10 +640,19 @@ public class ImportAttendanceFileSMOImpl extends BaseComponentSMO implements IIm
                                         String remark = "有调休（" +data.getStartTime()+"~"+data.getEndTime()+"），但考勤数据迟到。";
                                         updateRepairTypeByNameAndDepartAndDate(AttendanceType.CD.getCode(), data.getName(), data.getDepartment(), restDateStr);
                                         updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), restDateStr);
-                                    }else if (!actualEndWorkTime.isBefore(restStartTime)){
-                                        String remark = "有调休（" +data.getStartTime()+"~"+data.getEndTime()+"），但考勤数据早退。";
-                                        updateRepairTypeByNameAndDepartAndDate(AttendanceType.ZT.getCode(), data.getName(), data.getDepartment(), restDateStr);
-                                        updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), restDateStr);
+                                    }else if (actualEndWorkTime.isBefore(restStartTime)){
+                                        //下午上班时间
+                                        LocalTime pmWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getAttendanceDate()+" "+ConstantUtil.NOON_FIXED_START_TIME, DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+                                        //上午上班时间
+                                        LocalTime amOffWorkTime = LocalTime.parse(attendanceRecordPos.get(0).getAttendanceDate()+" "+ConstantUtil.MORNING_FIXED_END_TIME, DateTimeFormatter.ofPattern(DateUtil.DATE_FORMATE_STRING_A));
+                                        if ((!restStartTime.isAfter(pmWorkTime) && !restStartTime.isBefore(amOffWorkTime))
+                                                && (!actualEndWorkTime.isAfter(pmWorkTime) && !actualEndWorkTime.isBefore(amOffWorkTime))){
+                                            updateRepairTypeByNameAndDepartAndDate(AttendanceType.TXJ.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                        }else {
+                                            String remark = "有调休（" + data.getStartTime() + "~" + data.getEndTime() + "），但考勤数据早退。";
+                                            updateRepairTypeByNameAndDepartAndDate(AttendanceType.ZT.getCode(), data.getName(), data.getDepartment(), restDateStr);
+                                            updateRemarkByNameAndDepartAndDate(remark, data.getName(), data.getDepartment(), restDateStr);
+                                        }
                                     }else {
                                         updateRepairTypeByNameAndDepartAndDate(AttendanceType.TXJ.getCode(), data.getName(), data.getDepartment(), restDateStr);
                                     }

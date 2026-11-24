@@ -60,4 +60,10 @@ public interface ISyncDataService {
     void importData(MultipartFile file) throws IOException;
 
     void writeToAttendanceSys();
+
+    /**
+     * 从visitor_db_guoshui同步部门、用户和部门关系数据到tt
+     * sys_depart → u_org，sys_user → u_user，sys_user_depart → u_org_staff_rel
+     */
+    void syncFromVisitorDb();
 }

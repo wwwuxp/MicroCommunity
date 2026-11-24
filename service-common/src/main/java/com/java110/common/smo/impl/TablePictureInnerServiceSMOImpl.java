@@ -36,8 +36,8 @@ public class TablePictureInnerServiceSMOImpl extends BaseServiceSMO implements I
     @Autowired
     private ITablePictureServiceDao tablePictureServiceDaoImpl;
 
-    @Autowired
-    private FaceEngine faceEngine;
+//    @Autowired
+//    private FaceEngine faceEngine;
 
     @Transactional
     @Override
@@ -65,40 +65,40 @@ public class TablePictureInnerServiceSMOImpl extends BaseServiceSMO implements I
             try {
                 byte[] context = Base64Convert.base64ToByte(imageBase64Picture);
                 byte[] featureData = null;
-                if (Objects.nonNull(isFace) && isFace){
-                    // 需要对人脸照片进行特征码提取
-                    ImageInfo imageInfo = ImageFactory.getRGBData(context);
-
-                    // 人脸检测得到人脸列表
-                    List<FaceInfo> faceInfoList = new ArrayList<>();
-                    int detectErrorCode = faceEngine.detectFaces(imageInfo.getImageData(),
-                            imageInfo.getWidth(),
-                            imageInfo.getHeight(),
-                            imageInfo.getImageFormat(),
-                            faceInfoList);
-                    if (detectErrorCode != 0){
-                        return "人脸检测失败,errCode:" + detectErrorCode;
-                    }
-                    if (CollectionUtils.isNotEmpty(faceInfoList)){
-                        FaceFeature faceFeature = new FaceFeature();
-                        int featureErrorCode = faceEngine.extractFaceFeature(imageInfo.getImageData(),
-                                imageInfo.getWidth(),
-                                imageInfo.getHeight(),
-                                imageInfo.getImageFormat(),
-                                faceInfoList.get(0),
-                                faceFeature);
-                        if (featureErrorCode != 0){
-                            logger.error("获取人脸特征码失败");
-                            return "获取人脸特征码失败,errCode:" + featureErrorCode;
-                        }
-                        logger.error("获取到的人脸特征码为：{}", featureErrorCode);
-                        // 人脸特征值大小
-                        featureData = faceFeature.getFeatureData();
-                    }
-                    if (Objects.isNull(featureData)){
-                        return "根据图像未获取到人脸识别码";
-                    }
-                }
+//                if (Objects.nonNull(isFace) && isFace){
+//                    // 需要对人脸照片进行特征码提取
+//                    ImageInfo imageInfo = ImageFactory.getRGBData(context);
+//
+//                    // 人脸检测得到人脸列表
+//                    List<FaceInfo> faceInfoList = new ArrayList<>();
+//                    int detectErrorCode = faceEngine.detectFaces(imageInfo.getImageData(),
+//                            imageInfo.getWidth(),
+//                            imageInfo.getHeight(),
+//                            imageInfo.getImageFormat(),
+//                            faceInfoList);
+//                    if (detectErrorCode != 0){
+//                        return "人脸检测失败,errCode:" + detectErrorCode;
+//                    }
+//                    if (CollectionUtils.isNotEmpty(faceInfoList)){
+//                        FaceFeature faceFeature = new FaceFeature();
+//                        int featureErrorCode = faceEngine.extractFaceFeature(imageInfo.getImageData(),
+//                                imageInfo.getWidth(),
+//                                imageInfo.getHeight(),
+//                                imageInfo.getImageFormat(),
+//                                faceInfoList.get(0),
+//                                faceFeature);
+//                        if (featureErrorCode != 0){
+//                            logger.error("获取人脸特征码失败");
+//                            return "获取人脸特征码失败,errCode:" + featureErrorCode;
+//                        }
+//                        logger.error("获取到的人脸特征码为：{}", featureErrorCode);
+//                        // 人脸特征值大小
+//                        featureData = faceFeature.getFeatureData();
+//                    }
+//                    if (Objects.isNull(featureData)){
+//                        return "根据图像未获取到人脸识别码";
+//                    }
+//                }
 
                 TablePictureDto toDbTablePicture = new TablePictureDto();
                 toDbTablePicture.setPicture(context);

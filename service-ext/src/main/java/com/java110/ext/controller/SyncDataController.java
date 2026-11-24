@@ -93,6 +93,12 @@ public class SyncDataController {
         return ResultVo.success();
     }
 
+    @GetMapping("/syncFromVisitorDb")
+    public ResponseEntity syncFromVisitorDb(){
+        syncDataService.syncFromVisitorDb();
+        return ResultVo.success();
+    }
+
 //    /**
 //     * 查询导出数据预览（统计数量）
 //     */

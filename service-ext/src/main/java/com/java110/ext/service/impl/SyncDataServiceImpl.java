@@ -640,6 +640,7 @@ public class SyncDataServiceImpl implements ISyncDataService {
                 continue;
             }
             //更新用户SourceUserId，后续可直接使用SourceUserId
+            sysUserPo.setPost(item.getRelCdName());
             sysUserPo.setSourceUserId(item.getSourceUserId());
             sysUserPo.setSyncTime(new Date());
             attendanceSysService.updateSysUserById(sysUserPo);
@@ -683,6 +684,318 @@ public class SyncDataServiceImpl implements ISyncDataService {
                     }
                 }
             }
+        }
+    }
+
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void syncFromVisitorDb() {
+        logger.info("【syncFromVisitorDb】开始从visitor_db_guoshui同步数据到tt");
+
+        // 0. 先同步部门 sys_depart → u_org
+        syncDeparts();
+
+        // 1. 从visitor_db_guoshui(ds2)获取所有活跃用户
+        List<SysUserPo> sysUsers = attendanceSysService.getAllActiveSysUsers();
+        logger.info("【syncFromVisitorDb】从visitor_db_guoshui获取到{}条活跃用户数据", sysUsers.size());
+
+        int updateUserCount = 0;
+        int insertUserCount = 0;
+        int insertRelCount = 0;
+        int skipCount = 0;
+
+        for (SysUserPo sysUser : sysUsers) {
+            try {
+                // 2. 在tt(ds1)中查找匹配的用户
+                UserPo userPo = null;
+
+                // 先用sourceUserId匹配（u_user.source_user_id = sys_user.id）
+                if (StringUtils.isNotBlank(sysUser.getId())) {
+                    LambdaQueryWrapper<UserPo> userQuery = new LambdaQueryWrapper<>();
+                    userQuery.eq(UserPo::getPersonId, sysUser.getId());
+                    userQuery.eq(UserPo::getStatusCd, 0);
+                    userPo = userMapper.selectOne(userQuery);
+                }
+
+                // 再用realname匹配
+                if (Objects.isNull(userPo) && StringUtils.isNotBlank(sysUser.getRealname())) {
+                    LambdaQueryWrapper<UserPo> userQuery = new LambdaQueryWrapper<>();
+                    userQuery.eq(UserPo::getName, sysUser.getRealname());
+                    userQuery.eq(UserPo::getStatusCd, 0);
+                    List<UserPo> matchUsers = userMapper.selectList(userQuery);
+                    if (!CollectionUtils.isEmpty(matchUsers)) {
+                        if (matchUsers.size() == 1) {
+                            userPo = matchUsers.get(0);
+                        } else {
+                            // 多个同名用户时，用手机号再匹配
+                            for (UserPo u : matchUsers) {
+                                if (StringUtils.isNotBlank(sysUser.getPhone()) && StringUtils.equals(u.getTel(), sysUser.getPhone())) {
+                                    userPo = u;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (Objects.nonNull(userPo)) {
+                    // 3. 用户已存在，只更新非空字段，不强制覆盖
+                    boolean needUpdate = false;
+
+                    if (StringUtils.isNotBlank(sysUser.getRealname())) {
+                        userPo.setName(sysUser.getRealname());
+                        needUpdate = true;
+                    }
+                    if (StringUtils.isNotBlank(sysUser.getPhone())) {
+                        userPo.setTel(sysUser.getPhone());
+                        needUpdate = true;
+                    }
+                    // 补充sourceUserId关联
+                    if (StringUtils.isBlank(userPo.getPersonId()) && StringUtils.isNotBlank(sysUser.getId())) {
+                        userPo.setPersonId(sysUser.getId());
+                        needUpdate = true;
+                    }
+
+                    if (needUpdate) {
+                        userPo.setSyncDate(new Date());
+                        userMapper.updateById(userPo);
+                        updateUserCount++;
+                    }
+
+                    // 4. 同步用户部门关系 sys_user_depart → u_org_staff_rel
+                    syncUserDepartRel(sysUser, userPo);
+                } else {
+                    // 5. 用户不存在，创建新用户
+                    logger.info("【syncFromVisitorDb】在tt中未找到匹配用户: {}({}), 创建新用户", sysUser.getRealname(), sysUser.getId());
+
+                    String invitorId;
+                    do {
+                        invitorId = RandomStringUtils.randomNumeric(6);
+                    } while (Objects.nonNull(userMapper.hasSameInvitorId(invitorId)));
+
+                    String userId = StringUtils.isBlank(sysUser.getUsername()) ? sysUser.getId() : sysUser.getUsername();
+                    // 检查userId是否已存在
+                    UserPo existUser = userMapper.selectById(userId);
+                    if (Objects.nonNull(existUser)) {
+                        userId = sysUser.getId();
+                    }
+
+                    userPo = new UserPo();
+                    userPo.setUserId(userId);
+                    userPo.setName(sysUser.getRealname());
+                    userPo.setTel(sysUser.getPhone());
+                    userPo.setSourceUserId(sysUser.getId());
+                    userPo.setLevelCd("01");
+                    userPo.setStatusCd("0");
+                    userPo.setInvitorId(invitorId);
+                    userPo.setBId("-8");
+                    userPo.setFlag("2");
+                    userPo.setPassword("9ef8b90414d6ff1202baa99049adb5cd");
+                    userPo.setCreateTime(new Date());
+                    userPo.setSyncDate(new Date());
+                    userMapper.insert(userPo);
+                    insertUserCount++;
+
+                    // 同步部门关系
+                    syncUserDepartRel(sysUser, userPo);
+
+                    // 商户用户插入
+                    ensureStoreUser(userPo.getUserId());
+
+                    // 普通用户权限
+                    ensurePrivilegeUser(userPo.getUserId());
+                }
+            } catch (Exception e) {
+                logger.error("【syncFromVisitorDb】同步用户失败: {}({})", sysUser.getRealname(), sysUser.getId(), e);
+                skipCount++;
+            }
+        }
+
+        logger.info("【syncFromVisitorDb】同步完成，更新用户: {}，新增用户: {}，新增关系: {}，跳过: {}",
+                updateUserCount, insertUserCount, insertRelCount, skipCount);
+    }
+
+    /**
+     * 同步单个用户的部门关系（sys_user_depart → u_org_staff_rel）
+     */
+    private void syncUserDepartRel(SysUserPo sysUser, UserPo userPo) {
+        List<SysUserDepartVo> sysUserDeparts = attendanceSysService.getUserDepartByUserId(sysUser.getId());
+        if (CollectionUtils.isEmpty(sysUserDeparts)) {
+            return;
+        }
+
+        // 获取用户当前在tt中的所有部门关系
+        List<OrgStaffVo> currentOrgStaffVos = orgStaffRelMapper.selectOrgUser(null, userPo.getUserId());
+        List<String> matchedOrgIds = new ArrayList<>();
+
+        for (SysUserDepartVo sysUserDepart : sysUserDeparts) {
+            if (StringUtils.isBlank(sysUserDepart.getDepartName())) {
+                continue;
+            }
+            // 通过部门名称在tt中匹配u_org
+            OrgPo orgPo = findOrgByName(sysUserDepart.getDepartName());
+            if (Objects.isNull(orgPo)) {
+                logger.warn("【syncFromVisitorDb】在tt中未找到匹配的部门: {}", sysUserDepart.getDepartName());
+                continue;
+            }
+
+            matchedOrgIds.add(orgPo.getOrgId());
+
+            // 检查是否已存在该关系
+            boolean relExists = false;
+            if (!CollectionUtils.isEmpty(currentOrgStaffVos)) {
+                for (OrgStaffVo orgStaff : currentOrgStaffVos) {
+                    if (StringUtils.equals(orgStaff.getOrgId(), orgPo.getOrgId())) {
+                        relExists = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!relExists) {
+                DictPo dictPo = getOrGenDictJob(null, null);
+                OrgStaffRelPo orgStaffRelPo = new OrgStaffRelPo();
+                orgStaffRelPo.setRelId(KeyUtils.genKey("84"));
+                orgStaffRelPo.setCreateTime(new Date());
+                orgStaffRelPo.setOrgId(orgPo.getOrgId());
+                orgStaffRelPo.setRelCd(dictPo.getStatusCd());
+                orgStaffRelPo.setStaffId(userPo.getUserId());
+                orgStaffRelPo.setStoreId("402021121452660010");
+                orgStaffRelPo.setFlag("2");
+                orgStaffRelPo.setBId("-8");
+                orgStaffRelPo.setSyncTime(new Date());
+                orgStaffRelMapper.insert(orgStaffRelPo);
+            }
+        }
+
+        // 用户在tt中有部门关系，但visitor_db_guoshui中没有对应部门，则作废多余关系
+        if (!CollectionUtils.isEmpty(currentOrgStaffVos) && !CollectionUtils.isEmpty(matchedOrgIds)) {
+            for (OrgStaffVo orgStaff : currentOrgStaffVos) {
+                if (!matchedOrgIds.contains(orgStaff.getOrgId()) && StringUtils.isNotBlank(orgStaff.getUserFlag())) {
+                    OrgStaffRelPo updateDo = new OrgStaffRelPo();
+                    updateDo.setStatusCd("1");
+                    updateDo.setSyncTime(new Date());
+                    LambdaQueryWrapper<OrgStaffRelPo> relQuery = new LambdaQueryWrapper<>();
+                    relQuery.eq(OrgStaffRelPo::getRelId, orgStaff.getRelId());
+                    orgStaffRelMapper.update(updateDo, relQuery);
+                }
+            }
+        }
+    }
+
+    /**
+     * 同步部门 sys_depart → u_org
+     * 从visitor_db_guoshui获取所有部门，在tt中按名称匹配，不存在则新建
+     */
+    private void syncDeparts() {
+        List<SysDepartPo> sysDeparts = attendanceSysService.getAllActiveDeparts();
+        logger.info("【syncDeparts】从visitor_db_guoshui获取到{}条部门数据", sysDeparts.size());
+
+        // 获取tt中当前所有有效部门（parentOrgId=1398下）
+        LambdaQueryWrapper<OrgPo> orgQuery = new LambdaQueryWrapper<>();
+        orgQuery.eq(OrgPo::getParentOrgId, "1398");
+        orgQuery.eq(OrgPo::getStatusCd, "0");
+        List<OrgPo> existingOrgs = orgMapper.selectList(orgQuery);
+
+        int updateCount = 0;
+        int insertCount = 0;
+
+        for (SysDepartPo sysDepart : sysDeparts) {
+            if (StringUtils.isBlank(sysDepart.getDepartName())) {
+                continue;
+            }
+            // 按名称在tt中匹配部门
+            OrgPo matchedOrg = null;
+            for (OrgPo org : existingOrgs) {
+                if (StringUtils.equals(org.getOrgName(), sysDepart.getDepartName())) {
+                    matchedOrg = org;
+                    break;
+                }
+            }
+
+            if (Objects.nonNull(matchedOrg)) {
+                // 部门已存在，更新同步时间和来源关联
+                matchedOrg.setSyncTime(new Date());
+                matchedOrg.setDeptId(sysDepart.getId());
+                orgMapper.updateById(matchedOrg);
+                updateCount++;
+            } else {
+                // 部门不存在，新建
+                OrgPo newOrg = new OrgPo();
+                newOrg.setOrgId(KeyUtils.genKey("84"));
+                newOrg.setOrgName(sysDepart.getDepartName());
+                newOrg.setDeptId(sysDepart.getId());
+                newOrg.setParentOrgId("1398");
+                newOrg.setOrgLevel("3");
+                newOrg.setStatusCd("0");
+                newOrg.setAllowOperation("T");
+                newOrg.setStoreId(existingOrgs.isEmpty() ? null : existingOrgs.get(0).getStoreId());
+                newOrg.setFlag(2);
+                newOrg.setCreateTime(new Date());
+                newOrg.setSyncTime(new Date());
+                newOrg.setBId("-8");
+                newOrg.setBelongCommunityId("");
+                orgMapper.insert(newOrg);
+                existingOrgs.add(newOrg);
+                insertCount++;
+                logger.info("【syncDeparts】新建部门: {}(sourceOrgId={})", sysDepart.getDepartName(), sysDepart.getId());
+            }
+        }
+
+        logger.info("【syncDeparts】部门同步完成，更新: {}，新增: {}", updateCount, insertCount);
+    }
+
+    /**
+     * 根据部门名称在tt中查找u_org
+     */
+    private OrgPo findOrgByName(String orgName) {
+        LambdaQueryWrapper<OrgPo> query = new LambdaQueryWrapper<>();
+        query.eq(OrgPo::getOrgName, orgName);
+        query.eq(OrgPo::getStatusCd, "0");
+        return orgMapper.selectOne(query);
+    }
+
+    /**
+     * 确保商户用户记录存在
+     */
+    private void ensureStoreUser(String userId) {
+        LambdaQueryWrapper<StoreUserPo> storeUserQuery = new LambdaQueryWrapper<>();
+        storeUserQuery.eq(StoreUserPo::getUserId, userId);
+        storeUserQuery.eq(StoreUserPo::getStoreId, "402021121452660010");
+        storeUserQuery.eq(StoreUserPo::getStatusCd, "0");
+        if (storeUserMapper.selectCount(storeUserQuery) < 1) {
+            StoreUserPo storeUserPo = new StoreUserPo();
+            storeUserPo.setStoreUserId(KeyUtils.genKey("45"));
+            storeUserPo.setUserId(userId);
+            storeUserPo.setBId("-8");
+            storeUserPo.setStoreId("402021121452660010");
+            storeUserPo.setFlag("2");
+            storeUserPo.setCreateTime(new Date());
+            storeUserPo.setRelCd("600311000002");
+            storeUserPo.setStatusCd("0");
+            storeUserMapper.insert(storeUserPo);
+        }
+    }
+
+    /**
+     * 确保普通用户权限记录存在
+     */
+    private void ensurePrivilegeUser(String userId) {
+        LambdaQueryWrapper<PrivilegeUserPo> privilegeUserQuery = new LambdaQueryWrapper<>();
+        privilegeUserQuery.eq(PrivilegeUserPo::getUserId, userId);
+        privilegeUserQuery.eq(PrivilegeUserPo::getStoreId, "402021121452660010");
+        privilegeUserQuery.eq(PrivilegeUserPo::getStatusCd, "0");
+        privilegeUserQuery.eq(PrivilegeUserPo::getPId, "6002022010746310005");
+        if (privilegeUserMapper.selectCount(privilegeUserQuery) < 1) {
+            PrivilegeUserPo privilegeUserPo = new PrivilegeUserPo();
+            privilegeUserPo.setUserId(userId);
+            privilegeUserPo.setPId("6002022010746310005");
+            privilegeUserPo.setStoreId("402021121452660010");
+            privilegeUserPo.setPrivilege_flag("1");
+            privilegeUserPo.setCreateTime(new Date());
+            privilegeUserPo.setStatusCd("0");
+            privilegeUserMapper.insert(privilegeUserPo);
         }
     }
 

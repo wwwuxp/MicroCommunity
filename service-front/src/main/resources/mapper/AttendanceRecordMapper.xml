@@ -54,4 +54,91 @@
             and attendance_date = #{date}
         </if>
     </select>
+    <select id="queryAttendanceRecords"
+            resultType="com.java110.vo.api.attendanceRecord.ApiAttendanceRecordDataVo">
+        SELECT distinct uu.department, uu.position_name as `position`, uu.user_name as name, d.date_str attendanceDate,
+        DATE_FORMAT(a.actual_start_work_time, '%H:%i') actualStartWorkTime,
+        DATE_FORMAT(a.actual_end_work_time, '%H:%i') actualEndWorkTime,
+        case when a.repair_type is not null then a.repair_type else case when a.`type` is null then 4 else a.`type` end end type,
+        a.remark, (case when b.id is null then 1 else 0 end) as isWorkingDay,
+        a.attendance_date, uu.person_id
+        FROM sys_all_date d
+        join (select us.name as user_name, o.org_name as department, dd.name as position_name, us.person_id from u_user us
+        left join u_org_staff_rel r on us.user_id = r.staff_id
+        left join u_org o on r.org_id = o.org_id
+        left join t_dict dd on dd.status_cd = r.rel_cd and dd.table_name = 'u_org_staff_rel' and dd.table_columns = 'rel_cd'
+        where us.status_cd = '0'
+        and r.status_cd = '0'
+        and o.org_id in ('1399','1400','1401','1402','1403','1404','1405','1406','1407','1408','1409','1410','1411','842026051862340001','842026092970420003','842026092981930004','842026092990810005','842026092993470002','842026092998960006')
+        <if test="dto.department != null and dto.department != ''">
+            and o.org_name LIKE concat('%',#{dto.department},'%')
+        </if>
+        <if test="dto.position != null and dto.position != ''">
+            AND dd.name LIKE concat('%',#{dto.position},'%')
+        </if>
+        <if test="dto.name != null and dto.name != ''">
+            AND us.name LIKE concat('%',#{dto.name},'%')
+        </if>) uu
+        left join (select min(actual_start_work_time) actual_start_work_time, max(actual_end_work_time) actual_end_work_time, person_id, name, department, position, attendance_date, type, repair_type, remark
+        from attendance_record where 1=1
+        <if test="dto.lessAttendanceDate != null and dto.lessAttendanceDate != ''">
+            <![CDATA[AND attendance_date >= #{dto.lessAttendanceDate}]]>
+        </if>
+        <if test="dto.moreAttendanceDate != null and dto.moreAttendanceDate != ''">
+            <![CDATA[AND attendance_date <= #{dto.moreAttendanceDate}]]>
+        </if>
+        group by attendance_date, person_id) a on d.date_str = a.attendance_date and a.person_id = uu.person_id
+        <if test="dto.department != null and dto.department != ''">
+            and uu.department LIKE concat('%',#{dto.department},'%')
+        </if>
+        <if test="dto.position != null and dto.position != ''">
+            AND uu.position_name LIKE concat('%',#{dto.position},'%')
+        </if>
+        <if test="dto.name != null and dto.name != ''">
+            AND uu.user_name LIKE concat('%',#{dto.name},'%')
+        </if>
+        <if test="dto.fixedStartWorkTime != null and dto.fixedEndWorkTime != null">
+            AND (a.actual_start_work_time IS NULL OR a.actual_end_work_time IS NULL OR a.actual_start_work_time > #{dto.fixedStartWorkTime} OR <![CDATA[a.actual_end_work_time < #{dto.fixedEndWorkTime}]]>)
+        </if>
+        <if test="dto.userNameList != null">
+            AND uu.user_name in
+            <foreach collection="dto.userNameList" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        left join attendance_non_work_day b on d.date_str BETWEEN b.start_date and b.end_date
+        where d.date_str &lt; now()
+        <choose>
+            <when test="dto.workday == null or dto.workday == 0">
+                and (b.id is null or (b.id is not null and a.actual_start_work_time is not null))
+            </when>
+            <when test="dto.workday == 1">
+                and b.id is null
+            </when>
+            <when test="dto.workday == 2">
+                and b.id is not null and a.actual_start_work_time is not null
+            </when>
+        </choose>
+        <if test="dto.lessAttendanceDate != null and dto.lessAttendanceDate != ''">
+            <![CDATA[AND d.date_str >= #{dto.lessAttendanceDate}]]>
+        </if>
+        <if test="dto.moreAttendanceDate != null and dto.moreAttendanceDate != ''">
+            <![CDATA[AND d.date_str <= #{dto.moreAttendanceDate}]]>
+        </if>
+        <if test="dto.type != null">
+            <choose>
+                <when test="dto.type == 4">
+                    AND ((case when a.repair_type is not null then a.repair_type =#{dto.type} else a.`type` = #{dto.type} end ) or a.attendance_date is null)
+                </when>
+                <otherwise>
+                    AND (case when a.repair_type is not null then a.repair_type =#{dto.type} else a.`type` = #{dto.type} end)
+                </otherwise>
+            </choose>
+        </if>
+
+        ORDER BY d.date_str DESC, uu.person_id
+        <if test="dto.page != -1 and dto.page != null ">
+            limit #{dto.page}, #{dto.row}
+        </if>
+    </select>
 </mapper>

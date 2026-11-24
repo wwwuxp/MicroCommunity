@@ -82,4 +82,8 @@ public class OrgPo {
      * 标记。1：数据来自政务微信；null则是系统自添加；2：从数字化平台同步
      */
     private Integer flag;
+
+    private String deptId;
+
+    private String bId;
 }

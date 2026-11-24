@@ -12,4 +12,6 @@ public class SysDepartPo {
     private String departName;
 
     private String delFlag;
+
+    private String deptId;
 }

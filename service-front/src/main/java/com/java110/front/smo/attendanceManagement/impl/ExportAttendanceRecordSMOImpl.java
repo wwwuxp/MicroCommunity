@@ -3,8 +3,10 @@ package com.java110.front.smo.attendanceManagement.impl;
 import com.alibaba.fastjson.JSONObject;
 import com.java110.core.component.BaseComponentSMO;
 import com.java110.core.context.IPageData;
+import com.java110.dto.PageDto;
 import com.java110.dto.attendance.AttendanceRecordDto;
 import com.java110.enums.AttendanceType;
+import com.java110.front.mapper.AttendanceRecordMapper;
 import com.java110.front.smo.attendanceManagement.IExportAttendanceRecordSMO;
 import com.java110.intf.community.IAttendanceRecordInnerServiceSMO;
 import com.java110.utils.util.Assert;
@@ -37,6 +39,9 @@ public class ExportAttendanceRecordSMOImpl extends BaseComponentSMO implements I
 
     @Autowired
     private IAttendanceRecordInnerServiceSMO attendanceRecordInnerServiceSMOImpl;
+
+    @Autowired
+    private AttendanceRecordMapper attendanceRecordMapper;
 
     @Override
     public ResponseEntity<Object> exportAttendanceRecord(IPageData pd) throws UnsupportedEncodingException {
@@ -144,19 +149,25 @@ public class ExportAttendanceRecordSMOImpl extends BaseComponentSMO implements I
             cell7.setCellStyle(titleStyle);
 
             // 根据数据库中页码数决定写多少次
-            int count = attendanceRecordInnerServiceSMOImpl.queryAttendanceRecordsCount(attendanceRecordDto);
-            if (count <= 0){
-                return new ResponseEntity<>("没有数据可以导出", HttpStatus.INTERNAL_SERVER_ERROR);
-            }
+//            int count = attendanceRecordInnerServiceSMOImpl.queryAttendanceRecordsCount(attendanceRecordDto);
+//            int count = attendanceRecordMapper.queryAttendanceRecordsCount(attendanceRecordDto);
+//            if (count <= 0){
+//                return new ResponseEntity<>("没有数据可以导出", HttpStatus.INTERNAL_SERVER_ERROR);
+//            }
             // 总页数
-            int row = 500;
-            int totalPage = (int) Math.ceil((double) count / (double) row);
+//            int row = 500;
+//            int totalPage = (int) Math.ceil((double) count / (double) row);
             int num = 0;
-            for (int i = 1; i <= totalPage; i++) {
-                attendanceRecordDto.setPage(i);
-                attendanceRecordDto.setRow(row);
-                List<ApiAttendanceRecordDataVo> apiAttendanceRecordDataVos = attendanceRecordInnerServiceSMOImpl.queryAttendanceRecords(attendanceRecordDto);
+//            for (int i = 1; i <= totalPage; i++) {
+//                attendanceRecordDto.setPage(i);
+//                attendanceRecordDto.setRow(row);
+//                List<ApiAttendanceRecordDataVo> apiAttendanceRecordDataVos = attendanceRecordInnerServiceSMOImpl.queryAttendanceRecords(attendanceRecordDto);
 
+//                if (attendanceRecordDto.getPage() != PageDto.DEFAULT_PAGE) {
+//                    attendanceRecordDto.setPage((attendanceRecordDto.getPage() - 1) * attendanceRecordDto.getRow());
+//                }
+            attendanceRecordDto.setPage(-1);
+                List<ApiAttendanceRecordDataVo> apiAttendanceRecordDataVos = attendanceRecordMapper.queryAttendanceRecords(attendanceRecordDto);
                 for (ApiAttendanceRecordDataVo apiAttendanceRecordDataVo : apiAttendanceRecordDataVos) {
                     num++;
                     Row dataRow = sheet.createRow(num);
@@ -194,7 +205,7 @@ public class ExportAttendanceRecordSMOImpl extends BaseComponentSMO implements I
 //                            cell66.setCellValue("旷工");break;
 //                        default:
 //                    }
-                }
+//                }
             }
 
             os = new ByteArrayOutputStream();
